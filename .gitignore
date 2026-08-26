@@ -1,0 +1,44 @@
+# Python caches
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# Local Codex/agent state
+.agents/
+.codex/
+
+# Local runtime output
+logs/*
+!logs/.gitkeep
+tmp/
+outputs/
+figure-studio-runs/
+work/
+
+# Embedded baseline clone kept locally for audit/adaptation; the reproducible
+# vendored POLYGON source lives in vendor/polygon-main/.
+baselines/polygon_adapter/
+
+# Local environment and secrets
+.env
+.env.*
+*.pem
+*.key
+*.secret
+
+# OS/editor noise
+.DS_Store
+Thumbs.db
+
+# Temporary files
+*.tmp
+*.log
+
+# Large experiment arrays/checkpoints that are not release assets.
+# Model assets required for reproduction are tracked through Git LFS
+# in .gitattributes instead of being ignored here.
+*.ckpt
+*.npz
+*.npy

@@ -1,0 +1,14 @@
+{
+  "model": "models/polygon_vae_best_valid_novel_stable_020.pt",
+  "reference_temperature": 1.0,
+  "allowed_exploration_temperatures": [1.0, 1.05],
+  "selection_source": "original screening table; not migrated",
+  "quality_20k": {
+    "validity": 0.94245,
+    "novelty_unique": 0.9605221267112385
+  },
+  "quality_100k_confirmation": {
+    "validity": 0.94214,
+    "novelty_unique": 0.9585259823772626
+  }
+}

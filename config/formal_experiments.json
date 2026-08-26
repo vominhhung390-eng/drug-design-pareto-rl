@@ -1,0 +1,45 @@
+{
+  "protocol_version": 2,
+  "vae_model": "models/polygon_vae_best_valid_novel_stable_020.pt",
+  "reference_temperature": 1.0,
+  "exploration_temperatures": [1.0, 1.05],
+  "batch_size": 64,
+  "trajectory_lengths": [1, 3, 5],
+  "trajectory_step_normalization": "sqrt",
+  "trajectory_reward": "terminal_only",
+  "oracle_accounting": "one terminal decode and EGFR/VEGFR2 evaluation per trajectory",
+  "oracle_budgets": [2048, 5120, 10240],
+  "screening_seeds": [42, 43, 44],
+  "formal_seeds": [42, 43, 44, 45, 46, 47, 48, 49, 50, 51],
+  "extended_seeds": [52, 53, 54, 55, 56, 57, 58, 59, 60, 61],
+  "hv_reference": [0.0, 0.0],
+  "baselines": [
+    "polygon_random",
+    "reinvent",
+    "polygon_latent_ppo",
+    "graphga_nsga2",
+    "mars",
+    "mo_lso",
+    "cprl_style"
+  ],
+  "core_ablations": {
+    "a0_standard_ppo": {"multi_critic": false, "dynamic_weights": false, "multi_temperature": false, "multi_step_scale": false, "adaptive_channels": false, "trajectory_length": 1},
+    "a1_multi_critic": {"multi_critic": true, "dynamic_weights": false, "multi_temperature": false, "multi_step_scale": false, "adaptive_channels": false, "trajectory_length": 1},
+    "a3_multi_critic_dynamic": {"multi_critic": true, "dynamic_weights": true, "multi_temperature": false, "multi_step_scale": false, "adaptive_channels": false, "trajectory_length": 1},
+    "a4_add_multi_temperature": {"multi_critic": true, "dynamic_weights": true, "multi_temperature": true, "multi_step_scale": false, "adaptive_channels": false, "trajectory_length": 1},
+    "a5_add_multi_step_scale": {"multi_critic": true, "dynamic_weights": true, "multi_temperature": false, "multi_step_scale": true, "adaptive_channels": false, "trajectory_length": 1},
+    "a6_uniform_multiscale": {"multi_critic": true, "dynamic_weights": true, "multi_temperature": true, "multi_step_scale": true, "adaptive_channels": false, "trajectory_length": 1},
+    "a7_full_k1": {"multi_critic": true, "dynamic_weights": true, "multi_temperature": true, "multi_step_scale": true, "adaptive_channels": true, "trajectory_length": 1}
+  },
+  "trajectory_ablation": {
+    "k1": {"trajectory_length": 1, "trajectory_step_normalization": "sqrt"},
+    "k3": {"trajectory_length": 3, "trajectory_step_normalization": "sqrt"},
+    "k5": {"trajectory_length": 5, "trajectory_step_normalization": "sqrt"}
+  },
+  "resources": {
+    "gpu_training_parallel_initial": 2,
+    "cpu_worker_fraction": 0.75,
+    "logical_cpu_count": 32,
+    "cpu_workers_initial": 24
+  }
+}
