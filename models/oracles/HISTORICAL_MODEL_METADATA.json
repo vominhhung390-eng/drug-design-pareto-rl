@@ -1,0 +1,32 @@
+{
+  "schema_version": "historical-first-pair-oracles-v1",
+  "formal_role": "authoritative fixed models for EGFR/VEGFR2 generation and evaluation",
+  "row_level_training_data_available": false,
+  "scoring_fingerprint": {
+    "type": "Morgan/ECFP4 bit vector",
+    "radius": 2,
+    "n_bits": 2048,
+    "include_chirality": true
+  },
+  "random_forest": {
+    "class": "sklearn.ensemble.RandomForestRegressor",
+    "n_estimators": 1000,
+    "max_features": 1.0,
+    "min_samples_leaf": 1,
+    "random_state": 0,
+    "input_features": 2048
+  },
+  "models": {
+    "EGFR": {
+      "file": "target_EGFR_model.pkl",
+      "sha256": "d57ba46d71c7a943c3e17a6a6a688d55d48d9cbed93fa1429d95dedb85ae03ab",
+      "inferred_historical_training_rows": 1096
+    },
+    "VEGFR2": {
+      "file": "target_VEGFR2_model.pkl",
+      "sha256": "c2cfd492cfc0fa367dd8a262f5716b7eea4d1c2de3ff25acccdd96bae9eeeb94",
+      "inferred_historical_training_rows": 723
+    }
+  },
+  "provenance_note": "Historical Polygon model snapshot retained by the author. Exact original BindingDB rows are unavailable; recovered API snapshots are a separate optional condition."
+}

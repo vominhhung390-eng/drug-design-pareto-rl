@@ -14,7 +14,13 @@ param(
 
 $ErrorActionPreference = 'Stop'
 $Root = Split-Path -Parent $PSScriptRoot
-if (-not $PredictorRoot) { $PredictorRoot = Join-Path $Root 'models\reproduced_oracles' }
+if (-not $PredictorRoot) {
+    $PredictorRoot = if ($TargetPair -eq 'EGFR_VEGFR2') {
+        Join-Path $Root 'models\oracles'
+    } else {
+        Join-Path $Root 'models\reproduced_oracles'
+    }
+}
 if (-not $VaeModel) { $VaeModel = Join-Path $Root 'models\polygon_vae_best_valid_novel_stable_020.pt' }
 if ($TargetPair -eq 'EGFR_VEGFR2') {
     $Target1 = 'EGFR'; $Target2 = 'VEGFR2'

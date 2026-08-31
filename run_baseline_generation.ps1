@@ -19,10 +19,11 @@ $ErrorActionPreference = 'Stop'
 $project = Split-Path -Parent $MyInvocation.MyCommand.Path
 
 if (-not $PredictorRoot) {
-    $reproducedPredictors = Join-Path $project 'models\reproduced_oracles'
-    $PredictorRoot = if (Test-Path -LiteralPath (Join-Path $reproducedPredictors 'target_EGFR_model.pkl')) {
-        $reproducedPredictors
-    } else { Join-Path $project 'models\oracles' }
+    $PredictorRoot = if ($TargetPair -eq 'EGFR_VEGFR2') {
+        Join-Path $project 'models\oracles'
+    } else {
+        Join-Path $project 'models\reproduced_oracles'
+    }
 }
 if ($TargetPair -eq 'EGFR_VEGFR2') {
     $model1 = Join-Path $PredictorRoot 'target_EGFR_model.pkl'

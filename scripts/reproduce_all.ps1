@@ -47,6 +47,11 @@ $PredictorPython = Resolve-ProjectPath ([string]$Protocol.executables.predictor_
 if (Includes 'Predictors') {
     $Arguments = @((Join-Path $PSScriptRoot 'train_four_rf_predictors.py'), '--output', (Resolve-ProjectPath ([string]$Protocol.predictors.output_dir)))
     if ($AllowRecoveredEgfrVegfr2) { $Arguments += '--allow-recovered-egfr-vegfr2' }
+    if ($AllowRecoveredEgfrVegfr2) {
+        Write-Output 'PREDICTOR_MODE optional recovered EGFR/VEGFR2 plus formal PARP1/BRD4 retraining'
+    } else {
+        Write-Output 'PREDICTOR_MODE bundled historical EGFR/VEGFR2 plus formal PARP1/BRD4 retraining'
+    }
     Invoke-Checked $PredictorPython $Arguments
 }
 if (Includes 'VAE') {
@@ -90,7 +95,8 @@ if (Includes 'Generation') {
         }
         if ($Failures.Count) { break }
         $Name = "$($Task.pair)_$($Task.method)_seed$($Task.seed)"
-        if ($DryRun) { Write-Output "DRYRUN generation $Name"; continue }
+        $OracleMode = if ($Task.pair -eq 'EGFR_VEGFR2' -and -not $AllowRecoveredEgfrVegfr2) { 'bundled-historical' } else { 'reproduced' }
+        if ($DryRun) { Write-Output "DRYRUN generation $Name oracle=$OracleMode"; continue }
         $Stdout = Join-Path $LogRoot "$Name.out.log"
         $Stderr = Join-Path $LogRoot "$Name.err.log"
         $Arguments = @(
@@ -98,6 +104,7 @@ if (Includes 'Generation') {
             '-Method', $Task.method, '-TargetPair', $Task.pair, '-Seed', [string]$Task.seed,
             '-Budget', [string]$Protocol.formal_protocol.oracle_budget_per_seed, '-Config', $Config
         )
+        if ($AllowRecoveredEgfrVegfr2) { $Arguments += '-UseRecoveredEgfrVegfr2' }
         $Process = Start-Process -FilePath $Shell -ArgumentList $Arguments -WorkingDirectory $Root `
             -RedirectStandardOutput $Stdout -RedirectStandardError $Stderr -WindowStyle Hidden -PassThru
         $Running += [pscustomobject]@{ name = $Name; process = $Process; stdout = $Stdout; stderr = $Stderr; collected = $false }

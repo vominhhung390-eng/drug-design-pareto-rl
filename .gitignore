@@ -19,6 +19,12 @@ baselines/reinvent4_adapter/.venv/
 # Rebuilt experiment products; keep only directory documentation
 models/*
 !models/README.md
+!models/oracles/
+models/oracles/*
+!models/oracles/README.md
+!models/oracles/HISTORICAL_MODEL_METADATA.json
+!models/oracles/target_EGFR_model.pkl
+!models/oracles/target_VEGFR2_model.pkl
 results/*
 !results/README.md
 outputs/*

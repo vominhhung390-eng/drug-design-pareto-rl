@@ -37,7 +37,20 @@
   },
   "predictors": {
     "output_dir": "models/reproduced_oracles",
-    "first_pair_data_policy": "recovered_requires_explicit_opt_in",
+    "historical_first_pair_model_dir": "models/oracles",
+    "first_pair_data_policy": "bundled_historical_models_default; recovered_retraining_requires_explicit_opt_in",
+    "historical_first_pair_models": {
+      "EGFR": {
+        "file": "target_EGFR_model.pkl",
+        "sha256": "d57ba46d71c7a943c3e17a6a6a688d55d48d9cbed93fa1429d95dedb85ae03ab",
+        "inferred_training_rows": 1096
+      },
+      "VEGFR2": {
+        "file": "target_VEGFR2_model.pkl",
+        "sha256": "c2cfd492cfc0fa367dd8a262f5716b7eea4d1c2de3ff25acccdd96bae9eeeb94",
+        "inferred_training_rows": 723
+      }
+    },
     "features": {
       "type": "chiral Morgan/ECFP4 bit vector",
       "radius": 2,

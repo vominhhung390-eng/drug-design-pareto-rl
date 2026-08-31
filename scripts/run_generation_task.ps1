@@ -7,7 +7,8 @@ param(
     [string]$TargetPair,
     [int]$Seed,
     [int]$Budget = 10240,
-    [string]$Config = ''
+    [string]$Config = '',
+    [switch]$UseRecoveredEgfrVegfr2
 )
 
 $ErrorActionPreference = 'Stop'
@@ -18,7 +19,12 @@ function Resolve-ProjectPath([string]$Value) {
     if ([IO.Path]::IsPathRooted($Value)) { return $Value }
     return [IO.Path]::GetFullPath((Join-Path $Root $Value))
 }
-$PredictorRoot = Resolve-ProjectPath ([string]$Protocol.predictors.output_dir)
+$PredictorRoot = if ($TargetPair -eq 'EGFR_VEGFR2' -and -not $UseRecoveredEgfrVegfr2) {
+    Resolve-ProjectPath ([string]$Protocol.predictors.historical_first_pair_model_dir)
+} else {
+    Resolve-ProjectPath ([string]$Protocol.predictors.output_dir)
+}
+Write-Output "ORACLE_SOURCE pair=$TargetPair root=$PredictorRoot recovered_first_pair=$UseRecoveredEgfrVegfr2"
 if ($TargetPair -eq 'EGFR_VEGFR2') {
     if ($Method -eq 'own_method') {
         $Output = Join-Path $Root "results\own_method_v4\common_seeds_42_51_10240\v4_b_raw_mean_seed$Seed"

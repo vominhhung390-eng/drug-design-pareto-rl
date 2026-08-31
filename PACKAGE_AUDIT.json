@@ -1,9 +1,9 @@
 {
-  "schema_version": 2,
+  "schema_version": 3,
   "package_root": ".",
-  "generated_at": "2026-08-31T16:47:27.9197475+08:00",
-  "release_profile": "lean source-data-config package; trained weights and bulky runs intentionally excluded",
-  "package_size_bytes": 104122124.0,
+  "generated_at": "2026-08-31T17:34:00.1888052+08:00",
+  "release_profile": "lean source-data-config package with two required historical first-pair oracle models; other trained weights and bulky runs excluded",
+  "package_size_bytes": 264186969.0,
   "shared_dataset": {
     "line_count": 1584663,
     "sha256": "4301e7f6118839465012eb93510328681ef4b7b24642e8748c4ad40971f4a304",
@@ -33,7 +33,10 @@
     "parp1_brd4_formal_tables_present": true,
     "egfr_vegfr2_exact_historical_rows_present": false,
     "egfr_vegfr2_recovered_snapshots_present": true,
-    "explicit_opt_in_required": true
+    "historical_fixed_models_present": true,
+    "historical_fixed_model_hashes_verified": true,
+    "default_formal_first_pair_oracle": "models/oracles fixed historical models",
+    "recovered_retraining_requires_explicit_opt_in": true
   },
   "polygon_identity": "POLYGON adapter using the shared canonical+3 randomized-SMILES VAE; not strict no-augmentation original",
   "docking_reference": {
@@ -55,7 +58,7 @@
   "unexpected_packaged_weights": [],
   "excluded_method_named_paths": [],
   "known_blockers": [
-    "Exact historical EGFR/VEGFR2 training rows are unavailable; recovered BindingDB data requires explicit opt-in.",
+    "Exact historical EGFR/VEGFR2 training rows are unavailable; formal output-level reproduction uses verified fixed historical models, while recovered BindingDB retraining is an explicit alternate condition.",
     "POLYGON must be reported as using the shared augmented VAE, not as strict no-augmentation original.",
     "The historical AutoDock Vina 1.1.2 executable is a user-supplied third-party runtime and is not redistributed.",
     "CLOVER-Mol top-level LICENSE and CITATION.cff require author choice and metadata before public release."

@@ -17,6 +17,7 @@ function Category([string]$Relative) {
         '^baselines/' { 'baseline source and adapter'; break }
         '^data/predictor_target_pairs/' { 'predictor training data'; break }
         '^data/' { 'shared generation data'; break }
+        '^models/oracles/' { 'fixed historical first-pair oracle'; break }
         '^scripts/' { 'one-click reproduction entrypoint'; break }
         '^evaluation/|^analysis/' { 'evaluation and paper table code'; break }
         '^docking/' { 'docking source, receptor or protocol asset'; break }
@@ -35,10 +36,11 @@ $SourceMap = @(
     [pscustomobject]@{PackagePath='baselines/';Source='Pinned upstream repositories plus fair-protocol adapters';Purpose='Five formal baseline sources and fair-protocol adapters';Included='yes'},
     [pscustomobject]@{PackagePath='vendor/polygon-main/';Source='Pinned POLYGON upstream source snapshot';Purpose='Historical shared VAE training implementation';Included='yes'},
     [pscustomobject]@{PackagePath='data/train_smiles_only.txt';Source='Author-provided shared SMILES dataset';Purpose='Shared bottom-model training data';Included='yes'},
-    [pscustomobject]@{PackagePath='data/predictor_target_pairs/';Source='Recovered BindingDB plus formal ChEMBL 37 tables';Purpose='Four shared RF oracle training data';Included='yes'},
+    [pscustomobject]@{PackagePath='data/predictor_target_pairs/';Source='Recovered BindingDB plus formal ChEMBL 37 tables';Purpose='Optional first-pair retraining data plus formal second-pair RF training data';Included='yes'},
+    [pscustomobject]@{PackagePath='models/oracles/';Source='Author-retained historical Polygon model snapshot';Purpose='Formal fixed EGFR/VEGFR2 oracle models; exact original training rows unavailable';Included='yes'},
     [pscustomobject]@{PackagePath='docking/';Source='CLOVER-Mol docking protocol snapshot';Purpose='Four receptors, protocol validation and Top10 docking scripts';Included='yes'},
     [pscustomobject]@{PackagePath='reference_results/';Source='Verified completed formal outputs';Purpose='Small paper tables and docking summaries only';Included='yes'},
-    [pscustomobject]@{PackagePath='models/, results/, outputs/ bulky contents';Source='Rebuilt by one-click pipeline';Purpose='Trained weights, caches and historical full runs';Included='no'},
+    [pscustomobject]@{PackagePath='other models/, results/, outputs/ bulky contents';Source='Rebuilt by one-click pipeline';Purpose='Bottom-model weights, caches and historical full runs';Included='no'},
     [pscustomobject]@{PackagePath='retired baseline assets';Source='Retired method';Purpose='Excluded by user request';Included='no'}
 )
 $SourceMap | Export-Csv -LiteralPath $SourceMapPath -NoTypeInformation -Encoding UTF8
@@ -49,6 +51,9 @@ $KeyFiles = [ordered]@{
     shared_smiles_dataset = 'data/train_smiles_only.txt'
     egfr_recovered_snapshot = 'data/predictor_target_pairs/01_EGFR_VEGFR2_第一组_恢复相关数据_NOT_EXACT_ORIGINAL/EGFR_P00533_BindingDB_API_snapshot_20260712.json'
     vegfr2_recovered_snapshot = 'data/predictor_target_pairs/01_EGFR_VEGFR2_第一组_恢复相关数据_NOT_EXACT_ORIGINAL/VEGFR2_P35968_BindingDB_API_snapshot_20260712.json'
+    egfr_historical_oracle = 'models/oracles/target_EGFR_model.pkl'
+    vegfr2_historical_oracle = 'models/oracles/target_VEGFR2_model.pkl'
+    historical_oracle_metadata = 'models/oracles/HISTORICAL_MODEL_METADATA.json'
     parp1_formal_training = 'data/predictor_target_pairs/02_PARP1_BRD4_第二组_当前正式预测器数据_ChEMBL37/PARP1_CHEMBL3105_train_through_2023_n2538.csv'
     brd4_formal_training = 'data/predictor_target_pairs/02_PARP1_BRD4_第二组_当前正式预测器数据_ChEMBL37/BRD4_CHEMBL1163125_train_through_2023_n5245.csv'
     one_click = 'scripts/reproduce_all.ps1'
@@ -82,12 +87,24 @@ $ReferenceDocking = Import-Csv -LiteralPath (Join-Path $PackageRoot 'reference_r
 $ReferenceTasks = Import-Csv -LiteralPath (Join-Path $PackageRoot 'reference_results\docking_top10\docking_task_status.csv')
 $RetiredPattern = '(?i)' + 'moth' + 'ra'
 $NamedRetired = @(Get-ChildItem -LiteralPath $PackageRoot -Recurse -Force | Where-Object Name -Match $RetiredPattern | ForEach-Object { Relative-Path $_.FullName })
-$UnexpectedWeights = @(Get-ChildItem -LiteralPath (Join-Path $PackageRoot 'models') -Recurse -File | Where-Object Extension -Match '^\.(pt|pkl|pkg|model|ckpt)$')
+$AllowedPackagedWeights = @(
+    'models/oracles/target_EGFR_model.pkl',
+    'models/oracles/target_VEGFR2_model.pkl'
+)
+$UnexpectedWeights = @(
+    Get-ChildItem -LiteralPath (Join-Path $PackageRoot 'models') -Recurse -File |
+        Where-Object {
+            $_.Extension -Match '^\.(pt|pkl|pkg|model|ckpt)$' -and
+            (Relative-Path $_.FullName) -notin $AllowedPackagedWeights
+        }
+)
+$EgfrHistoricalHash = ($KeyHashes | Where-Object Asset -eq 'egfr_historical_oracle').SHA256
+$Vegfr2HistoricalHash = ($KeyHashes | Where-Object Asset -eq 'vegfr2_historical_oracle').SHA256
 $Audit = [ordered]@{
-    schema_version = 2
+    schema_version = 3
     package_root = '.'
     generated_at = (Get-Date).ToString('o')
-    release_profile = 'lean source-data-config package; trained weights and bulky runs intentionally excluded'
+    release_profile = 'lean source-data-config package with two required historical first-pair oracle models; other trained weights and bulky runs excluded'
     package_size_bytes = (Get-ChildItem -LiteralPath $PackageRoot -Recurse -File -Force | Measure-Object Length -Sum).Sum
     shared_dataset = [ordered]@{
         line_count = $LineCount
@@ -105,7 +122,13 @@ $Audit = [ordered]@{
         parp1_brd4_formal_tables_present = $true
         egfr_vegfr2_exact_historical_rows_present = $false
         egfr_vegfr2_recovered_snapshots_present = $true
-        explicit_opt_in_required = $true
+        historical_fixed_models_present = $true
+        historical_fixed_model_hashes_verified = (
+            $EgfrHistoricalHash -eq 'd57ba46d71c7a943c3e17a6a6a688d55d48d9cbed93fa1429d95dedb85ae03ab' -and
+            $Vegfr2HistoricalHash -eq 'c2cfd492cfc0fa367dd8a262f5716b7eea4d1c2de3ff25acccdd96bae9eeeb94'
+        )
+        default_formal_first_pair_oracle = 'models/oracles fixed historical models'
+        recovered_retraining_requires_explicit_opt_in = $true
     }
     polygon_identity = 'POLYGON adapter using the shared canonical+3 randomized-SMILES VAE; not strict no-augmentation original'
     docking_reference = [ordered]@{
@@ -127,7 +150,7 @@ $Audit = [ordered]@{
     unexpected_packaged_weights = @($UnexpectedWeights | ForEach-Object { Relative-Path $_.FullName })
     excluded_method_named_paths = $NamedRetired
     known_blockers = @(
-        'Exact historical EGFR/VEGFR2 training rows are unavailable; recovered BindingDB data requires explicit opt-in.',
+        'Exact historical EGFR/VEGFR2 training rows are unavailable; formal output-level reproduction uses verified fixed historical models, while recovered BindingDB retraining is an explicit alternate condition.',
         'POLYGON must be reported as using the shared augmented VAE, not as strict no-augmentation original.',
         'The historical AutoDock Vina 1.1.2 executable is a user-supplied third-party runtime and is not redistributed.',
         'CLOVER-Mol top-level LICENSE and CITATION.cff require author choice and metadata before public release.'

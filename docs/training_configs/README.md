@@ -15,14 +15,14 @@
 | 05 | DrugEx v2数据编码、先验训练与Evolve优化 | [05_DrugEx_v2.md](05_DrugEx_v2.md) | 已验证 |
 | 06 | MO-LSO预处理、JTVAE训练与GPflow优化 | [06_MO-LSO.md](06_MO-LSO.md) | 大部分已验证 |
 | 07 | GraphPareto--NSGA-II直接搜索 | [07_GraphPareto-NSGA-II.md](07_GraphPareto-NSGA-II.md) | 已验证；无底层训练阶段 |
-| 08 | EGFR、VEGFR2、PARP1、BRD4四个RF预测器 | [08_四靶点RF预测器.md](08_四靶点RF预测器.md) | 四靶点训练参数已统一；第一靶点对数据非精确原始版 |
+| 08 | EGFR、VEGFR2、PARP1、BRD4四个RF预测器 | [08_四靶点RF预测器.md](08_四靶点RF预测器.md) | 正式第一靶点对使用固定历史模型；第二靶点对从正式数据重训 |
 | 09 | 评价指标、10种子汇总与论文表格 | [09_评价与论文表格.md](09_评价与论文表格.md) | 已验证；统一入口已补 |
 | 10 | 每种子独立Top10分子对接 | [10_Top10分子对接.md](10_Top10分子对接.md) | 已验证；1,200个候选、2,400项对接 |
 
 ## 复现顺序
 
 1. 按 `environments/` 重建各方法环境。
-2. 按 `08_四靶点RF预测器.md` 训练四个共享预测器。
+2. 校验历史EGFR/VEGFR2模型，并按 `08_四靶点RF预测器.md` 从头训练PARP1/BRD4共享预测器。
 3. 按 `03_POLYGON.md` 训练共享POLYGON VAE。
 4. 分别训练 REINVENT4、DrugEx v2 和 MO-LSO 的底层生成模型；GraphPareto无需训练。
 5. 用相同数据集、预测器、预算和种子运行 CLOVER-Mol 与五个基线。
@@ -33,6 +33,6 @@
 
 以下问题未解决前，只能称为“从头方法复现”，不能称为“数值完全重建原论文模型”：
 
-1. 四个RF预测器的正式特征与训练参数已经确认统一；但EGFR/VEGFR2目录为恢复相关数据，不是已通过来源和哈希确认的最初训练数据。
+1. 四个正式RF共用相同打分接口和RF结构；EGFR/VEGFR2固定历史模型已按哈希打包，但其最初训练行缺失，恢复数据只能作为替代重训条件。
 2. `run_predictor_retraining.ps1` 是后续Chemprop实验，不是论文四个正式RF预测器的训练入口；正式入口是 `scripts/train_four_rf_predictors.py`。
 3. POLYGON必须在论文中标记为使用共享增强VAE，不能称为无增强的严格原版。

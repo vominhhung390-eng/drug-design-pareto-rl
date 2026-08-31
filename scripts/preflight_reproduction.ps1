@@ -45,9 +45,29 @@ foreach ($Relative in @(
     $Path = Join-Path $Root $Relative
     Add-Check "predictor_data_$Relative" (Test-Path -LiteralPath $Path) $Path
 }
-Add-Check 'exact_historical_egfr_vegfr2_rows' $AllowRecoveredEgfrVegfr2 `
-    'Exact historical rows are unavailable; explicit recovered-data opt-in is required.' `
-    ($(if ($AllowRecoveredEgfrVegfr2) { 'warning' } else { 'error' }))
+$HistoricalRoot = Resolve-ProjectPath ([string]$Protocol.predictors.historical_first_pair_model_dir)
+foreach ($Property in $Protocol.predictors.historical_first_pair_models.PSObject.Properties) {
+    $Target = [string]$Property.Name
+    $Model = Join-Path $HistoricalRoot ([string]$Property.Value.file)
+    $Exists = Test-Path -LiteralPath $Model
+    Add-Check "historical_${Target}_model_exists" $Exists $Model
+    if ($Exists) {
+        $Actual = (Get-FileHash -LiteralPath $Model -Algorithm SHA256).Hash.ToLowerInvariant()
+        $Expected = ([string]$Property.Value.sha256).ToLowerInvariant()
+        Add-Check "historical_${Target}_model_sha256" ($Actual -eq $Expected) "actual=$Actual expected=$Expected"
+    }
+}
+Add-Check 'exact_historical_egfr_vegfr2_rows' $false `
+    'Exact historical training rows are unavailable; bundled fixed models provide formal output-level reproduction.' `
+    'warning'
+if ($AllowRecoveredEgfrVegfr2) {
+    Add-Check 'first_pair_oracle_mode' $true `
+        'Explicit alternate mode: retrain EGFR/VEGFR2 from provenance-marked recovered BindingDB snapshots.' `
+        'warning'
+} else {
+    Add-Check 'first_pair_oracle_mode' $true `
+        "Formal default: verified bundled historical models from $HistoricalRoot"
+}
 
 $VinaConfigured = if ($env:VINA_EXECUTABLE) { [string]$env:VINA_EXECUTABLE } else { [string]$Protocol.docking.vina_executable_default }
 $VinaPath = Resolve-ProjectPath $VinaConfigured

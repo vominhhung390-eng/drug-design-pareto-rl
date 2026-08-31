@@ -1,9 +1,10 @@
 #!/usr/bin/env python
-"""Train the four shared RF ranking oracles used by every method.
+"""Train the shared RF ranking oracles used by every method.
 
-PARP1/BRD4 use the packaged ChEMBL 37 formal training tables.  The exact
-historical EGFR/VEGFR2 rows were not recovered; their packaged BindingDB API
-snapshots are therefore available only behind an explicit opt-in flag.
+By default this trains PARP1/BRD4 from the packaged ChEMBL 37 formal tables.
+Formal EGFR/VEGFR2 runs use the bundled historical models in models/oracles.
+Their recovered BindingDB snapshots are a separate condition available only
+behind an explicit opt-in flag.
 """
 from __future__ import annotations
 
@@ -145,22 +146,9 @@ def main() -> None:
     parser.add_argument("--output", type=Path, default=ROOT / "models/reproduced_oracles")
     parser.add_argument("--allow-recovered-egfr-vegfr2", action="store_true")
     args = parser.parse_args()
-    if not args.allow_recovered_egfr_vegfr2:
-        raise SystemExit(
-            "BLOCKED: exact historical EGFR/VEGFR2 training rows are unavailable. "
-            "Use --allow-recovered-egfr-vegfr2 only if the documented BindingDB recovery is acceptable."
-        )
 
     args.output.mkdir(parents=True, exist_ok=True)
     specs = {
-        "EGFR": lambda: load_recovered_bindingdb(
-            FIRST_PAIR / "EGFR_P00533_BindingDB_API_snapshot_20260712.json",
-            "Epidermal growth factor receptor",
-        ),
-        "VEGFR2": lambda: load_recovered_bindingdb(
-            FIRST_PAIR / "VEGFR2_P35968_BindingDB_API_snapshot_20260712.json",
-            "Vascular endothelial growth factor receptor 2",
-        ),
         "PARP1": lambda: load_formal_csv(
             SECOND_PAIR / "PARP1_CHEMBL3105_train_through_2023_n2538.csv"
         ),
@@ -168,6 +156,18 @@ def main() -> None:
             SECOND_PAIR / "BRD4_CHEMBL1163125_train_through_2023_n5245.csv"
         ),
     }
+    if args.allow_recovered_egfr_vegfr2:
+        specs = {
+            "EGFR": lambda: load_recovered_bindingdb(
+                FIRST_PAIR / "EGFR_P00533_BindingDB_API_snapshot_20260712.json",
+                "Epidermal growth factor receptor",
+            ),
+            "VEGFR2": lambda: load_recovered_bindingdb(
+                FIRST_PAIR / "VEGFR2_P35968_BindingDB_API_snapshot_20260712.json",
+                "Vascular endothelial growth factor receptor 2",
+            ),
+            **specs,
+        }
     rows: list[dict[str, object]] = []
     sources: dict[str, object] = {}
     model_hashes: list[dict[str, str]] = []
@@ -185,10 +185,19 @@ def main() -> None:
         writer.writeheader()
         writer.writerows(model_hashes)
     metadata = {
-        "schema_version": "four-shared-rf-oracles-v1",
+        "schema_version": "shared-rf-oracles-v2",
+        "mode": (
+            "optional_recovered_first_pair_plus_formal_second_pair"
+            if args.allow_recovered_egfr_vegfr2
+            else "formal_second_pair_only"
+        ),
         "warning": (
-            "EGFR/VEGFR2 use recovered BindingDB API snapshots and are not an exact row-for-row "
-            "reconstruction of the historical oracle training data."
+            "EGFR/VEGFR2 in this output use recovered BindingDB API snapshots and are not an exact "
+            "row-for-row reconstruction of the historical models. Formal first-pair runs use "
+            "models/oracles instead."
+            if args.allow_recovered_egfr_vegfr2
+            else "Only PARP1/BRD4 are retrained here. Formal EGFR/VEGFR2 runs use the bundled "
+            "historical models in models/oracles."
         ),
         "features": {"type": "Morgan/ECFP4 bit vector", "radius": 2, "n_bits": 2048, "include_chirality": True},
         "model": {
@@ -209,6 +218,7 @@ def main() -> None:
         },
         "sources": sources,
         "models": {row["target"]: f"target_{row['target']}_model.pkl" for row in rows},
+        "formal_first_pair_models": "models/oracles",
     }
     (args.output / "metadata.json").write_text(
         json.dumps(metadata, ensure_ascii=False, indent=2), encoding="utf-8"
