@@ -1,0 +1,8 @@
+{
+  "selected_total": 1200,
+  "prepared_or_reused": 1200,
+  "errors": [],
+  "conformer_seed_base": 20260829,
+  "charge_model": "gasteiger",
+  "macrocycle_policy": "rigid_macrocycles"
+}

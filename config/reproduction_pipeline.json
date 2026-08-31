@@ -1,0 +1,125 @@
+{
+  "schema_version": 1,
+  "project_name": "CLOVER-Mol full reproduction",
+  "dataset": {
+    "path": "data/train_smiles_only.txt",
+    "sha256": "4301e7f6118839465012eb93510328681ef4b7b24642e8748c4ad40971f4a304",
+    "line_count": 1584663
+  },
+  "formal_protocol": {
+    "target_pairs": ["EGFR_VEGFR2", "PARP1_BRD4"],
+    "methods": [
+      "own_method",
+      "polygon_shared_augmented_vae",
+      "reinvent4",
+      "drugex_v2",
+      "mo_lso",
+      "graphpareto_nsga2"
+    ],
+    "seeds": [42, 43, 44, 45, 46, 47, 48, 49, 50, 51],
+    "oracle_budget_per_seed": 10240,
+    "anytime_checkpoints": [1024, 2048, 5120, 10240],
+    "max_parallel_generation_tasks": 2
+  },
+  "executables": {
+    "conda": "conda",
+    "powershell": "pwsh",
+    "clover_python": ".venvs/common/Scripts/python.exe",
+    "polygon_python": ".venvs/common/Scripts/python.exe",
+    "predictor_python": ".venvs/common/Scripts/python.exe",
+    "drugex_python": ".venvs/common/Scripts/python.exe",
+    "graphpareto_python": ".venvs/common/Scripts/python.exe",
+    "reinvent_python": "baselines/reinvent4_adapter/.venv/Scripts/python.exe",
+    "reinvent_executable": "baselines/reinvent4_adapter/.venv/Scripts/reinvent.exe",
+    "mo_lso_python": ".venvs/mo_lso_torch/Scripts/python.exe",
+    "mo_lso_gp_python": ".venvs/mo_lso_gpflow/Scripts/python.exe",
+    "docking_python": ".venvs/docking/Scripts/python.exe"
+  },
+  "predictors": {
+    "output_dir": "models/reproduced_oracles",
+    "first_pair_data_policy": "recovered_requires_explicit_opt_in",
+    "features": {
+      "type": "chiral Morgan/ECFP4 bit vector",
+      "radius": 2,
+      "n_bits": 2048,
+      "include_chirality": true
+    },
+    "random_forest": {
+      "n_estimators": 1000,
+      "max_features": 1.0,
+      "min_samples_leaf": 1,
+      "random_state": 0,
+      "n_jobs": -1
+    }
+  },
+  "shared_polygon_vae": {
+    "source": "vendor/polygon-main",
+    "raw_training_data": "data/train_smiles_only.txt",
+    "randomized_training_data": "results/reproduced/pretraining/shared_polygon_vae/train_smiles_randomized_x4.txt",
+    "output_dir": "results/reproduced/pretraining/shared_polygon_vae",
+    "augmentation": {
+      "canonical_plus_randomized": 3,
+      "seed": 20260701,
+      "workers": 24,
+      "chunk_size": 8000,
+      "expected_lines": 6324009,
+      "historical_sha256": "6fdbbb4588aeef6e0d4f3b4bf8d3b834ea6d5af277dd12c2d918c1f24e466ea2"
+    },
+    "training": {
+      "seed": 20260702,
+      "epochs": 70,
+      "batch_size": 2048,
+      "save_frequency": 1,
+      "device": "cuda:0",
+      "encoder_cell": "gru",
+      "encoder_bidirectional": true,
+      "encoder_hidden": 512,
+      "encoder_layers": 1,
+      "encoder_dropout": 0.3,
+      "decoder_cell": "gru",
+      "decoder_layers": 3,
+      "decoder_dropout": 0.2,
+      "latent_dimension": 128,
+      "decoder_hidden": 512,
+      "learning_rate_start": 0.00025,
+      "learning_rate_end": 0.00025,
+      "kl_start_epoch": 10,
+      "kl_weight_start": 0.0,
+      "kl_weight_end": 0.15,
+      "gradient_clip": 50,
+      "data_loader_workers": 0,
+      "sgdr_period": 10,
+      "sgdr_restarts": 6,
+      "sgdr_multiplier": 1,
+      "middle_dropout": 0.2,
+      "middle_layers": 1,
+      "batchnorm_conv": true,
+      "batchnorm_middle": true,
+      "lambda_scale": 1.0
+    },
+    "selection": {
+      "candidate_epochs": [20, 25, 30, 35, 40, 45, 50, 55, 60, 65],
+      "include_final": true,
+      "samples_per_candidate": 20000,
+      "seed": 42,
+      "batch_size": 512,
+      "max_smiles_length": 120,
+      "temperatures": [1.0, 1.05, 1.1, 1.15, 1.18, 1.2, 1.22, 1.25, 1.3, 1.35],
+      "rule": "require validity>=0.90 and novelty>=0.90; then maximize min(validity, novelty), sum, uniqueness",
+      "historical_selected_epoch": 20,
+      "historical_selected_temperature": 1.0,
+      "historical_selected_model_sha256": "f26bc67c3d6ea47c5756941902a52b8607df170f24528f7df6aa1db59fc504e5"
+    }
+  },
+  "docking": {
+    "historical_vina_version": "1.1.2",
+    "vina_executable_default": "tools/autodock_vina_1.1.2/vina.exe",
+    "vina_binary_bundled": false,
+    "top_k_per_method_pair_seed": 10,
+    "expected_candidates": 1200,
+    "expected_tasks": 2400,
+    "vina_exhaustiveness": 32,
+    "vina_num_modes": 9,
+    "vina_energy_range_kcal_mol": 5
+  }
+}

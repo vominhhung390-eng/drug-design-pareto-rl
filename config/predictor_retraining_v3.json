@@ -1,0 +1,58 @@
+{
+  "run_id": "predictor_retraining_v3_20260731",
+  "output_dir": "results/predictor_retraining_v3_20260731",
+  "sources": {
+    "EGFR": "data/external/chembl/CHEMBL203_activities.jsonl",
+    "VEGFR2": "data/external/chembl/CHEMBL279_activities.jsonl"
+  },
+  "endpoint": "IC50",
+  "max_within_compound_pactivity_span": 1.5,
+  "activity_threshold": 6.5,
+  "profiles": {
+    "single_protein_wt_or_unspecified": {
+      "bao_formats": ["BAO_0000357"],
+      "variant_classes": ["EXPLICIT_WT", "UNSPECIFIED"],
+      "minimum_assay_size": 1
+    },
+    "single_protein_assay_ge5": {
+      "bao_formats": ["BAO_0000357"],
+      "variant_classes": ["EXPLICIT_WT", "UNSPECIFIED"],
+      "minimum_assay_size": 5
+    },
+    "single_protein_assay_ge10": {
+      "bao_formats": ["BAO_0000357"],
+      "variant_classes": ["EXPLICIT_WT", "UNSPECIFIED"],
+      "minimum_assay_size": 10
+    },
+    "explicit_wt_single_protein": {
+      "bao_formats": ["BAO_0000357"],
+      "variant_classes": ["EXPLICIT_WT"],
+      "minimum_assay_size": 1
+    }
+  },
+  "rolling_folds": [
+    {
+      "name": "fold_a",
+      "train_end_year": 2019,
+      "validation_start_year": 2020,
+      "validation_end_year": 2021
+    },
+    {
+      "name": "fold_b",
+      "train_end_year": 2021,
+      "validation_start_year": 2022,
+      "validation_end_year": 2023
+    }
+  ],
+  "development_end_year": 2023,
+  "exploratory_start_year": 2024,
+  "random_seed": 42,
+  "acceptance": {
+    "egfr_mean_spearman_min": 0.45,
+    "egfr_mean_rmse_max": 1.0,
+    "vegfr2_mean_spearman_min": 0.60,
+    "vegfr2_mean_rmse_max": 1.0,
+    "minimum_temporal_validation_n_per_fold": 50
+  },
+  "selection_policy": "Select by two-fold mean temporal Spearman subject to RMSE and minimum-n constraints. The 2024+ cohort is exploratory only and cannot select models."
+}

@@ -1,0 +1,72 @@
+{
+  "experiment_id": "own_method_v2_late_pareto_screening_5120",
+  "base_method": "V1 corrected dynamic K=1",
+  "purpose": "Improve late-budget Pareto refinement without changing the registered early exploration or raw two-oracle reward contract.",
+  "oracle_budget": 5120,
+  "batch_size": 64,
+  "seeds": [42, 43, 44],
+  "max_concurrent": 6,
+  "common": {
+    "archive_seed_start": 0.30,
+    "archive_seed_ramp_end": 0.70,
+    "archive_seed_noise": 0.12,
+    "archive_seed_noise_end": 0.05,
+    "pareto_reward_start": 0.30,
+    "pareto_reward_ramp_end": 0.70,
+    "trajectory_length": 1,
+    "controller_variant": "ours_full_corrected"
+  },
+  "variants": {
+    "v2_a_archive": {
+      "archive_seed_fraction": 0.50,
+      "hvc_reward_weight": 0.0,
+      "crowding_reward_weight": 0.0,
+      "balanced_reward_weight": 0.0,
+      "pareto_actor_coef": 0.0,
+      "sample_preference_mode": "shared",
+      "sample_preference_blend": 0.0,
+      "sample_preference_start": 0.30,
+      "sample_preference_ramp_end": 0.70
+    },
+    "v2_b_actor_pareto": {
+      "archive_seed_fraction": 0.0,
+      "hvc_reward_weight": 0.20,
+      "crowding_reward_weight": 0.05,
+      "balanced_reward_weight": 0.10,
+      "pareto_actor_coef": 1.0,
+      "sample_preference_mode": "shared",
+      "sample_preference_blend": 0.0,
+      "sample_preference_start": 0.30,
+      "sample_preference_ramp_end": 0.70
+    },
+    "v2_c_archive_actor_pareto": {
+      "archive_seed_fraction": 0.50,
+      "hvc_reward_weight": 0.20,
+      "crowding_reward_weight": 0.05,
+      "balanced_reward_weight": 0.10,
+      "pareto_actor_coef": 1.0,
+      "sample_preference_mode": "shared",
+      "sample_preference_blend": 0.0,
+      "sample_preference_start": 0.30,
+      "sample_preference_ramp_end": 0.70
+    },
+    "v2_d_full_mixed_preferences": {
+      "archive_seed_fraction": 0.50,
+      "hvc_reward_weight": 0.20,
+      "crowding_reward_weight": 0.05,
+      "balanced_reward_weight": 0.10,
+      "pareto_actor_coef": 1.0,
+      "sample_preference_mode": "grid",
+      "sample_preference_blend": 0.50,
+      "sample_preference_start": 0.30,
+      "sample_preference_ramp_end": 0.70
+    }
+  },
+  "selection_gate": {
+    "mean_hv_target": 0.465,
+    "validity_minimum": 0.90,
+    "same_seed_polygon_wins_required": 2,
+    "same_seed_polygon_total": 3,
+    "quality_constrained_hv_must_not_drop": true
+  }
+}

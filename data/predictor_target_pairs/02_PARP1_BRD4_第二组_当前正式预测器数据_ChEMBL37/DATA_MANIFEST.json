@@ -1,0 +1,377 @@
+{
+  "run_id": "predictor_parp1_brd4_20260804",
+  "config": "historical_workspace/config/predictor_parp1_brd4_20260804.json",
+  "config_sha256": "b886452ac79d10b8c3efed1705e1c70f0bcef30f3dd5a5aa05ac8a0a7f040050",
+  "selection_policy": "Select the profile and model on two rolling historical folds by mean temporal Spearman, subject to RMSE and minimum-n constraints. ChEMBL records first reported in 2024 or later are a locked test set and cannot select the model.",
+  "targets": {
+    "PARP1": {
+      "source": "historical_workspace/data/external/chembl/CHEMBL3105_activities.jsonl",
+      "source_sha256": "43f46bf9252626b8d010002466ab9498b5c605da3c38d5ab90a3cf41478201b4",
+      "base_measurements": 3860,
+      "base_unique_molecules": 3458,
+      "variant_counts": {
+        "UNSPECIFIED": 3858,
+        "EXPLICIT_WT": 2
+      },
+      "profiles": {
+        "single_protein_assay_ge5": {
+          "specification": {
+            "bao_formats": [
+              "BAO_0000357"
+            ],
+            "variant_classes": [
+              "EXPLICIT_WT",
+              "UNSPECIFIED"
+            ],
+            "minimum_assay_size": 5
+          },
+          "measurements": 2929,
+          "assays": 125,
+          "excluded_inconsistent_compounds": 34,
+          "all_compounds": {
+            "n": 2730,
+            "n_scaffolds": 1165,
+            "pactivity_median": 7.36,
+            "pactivity_iqr": 1.7175000000000002,
+            "active_rate": 0.726007326007326,
+            "year_min": 2001,
+            "year_max": 2025
+          },
+          "folds": {
+            "fold_a": {
+              "train": {
+                "n": 1890,
+                "n_scaffolds": 779,
+                "pactivity_median": 7.275,
+                "pactivity_iqr": 1.7575000000000003,
+                "active_rate": 0.7005291005291006,
+                "year_min": 2001,
+                "year_max": 2019
+              },
+              "validation": {
+                "n": 309,
+                "n_scaffolds": 130,
+                "pactivity_median": 7.3,
+                "pactivity_iqr": 1.4399999999999995,
+                "active_rate": 0.7119741100323624,
+                "year_min": 2020,
+                "year_max": 2021
+              },
+              "validation_unseen_scaffold_rate": 0.9935275080906149
+            },
+            "fold_b": {
+              "train": {
+                "n": 2199,
+                "n_scaffolds": 908,
+                "pactivity_median": 7.28,
+                "pactivity_iqr": 1.6950000000000003,
+                "active_rate": 0.702137335152342,
+                "year_min": 2001,
+                "year_max": 2021
+              },
+              "validation": {
+                "n": 339,
+                "n_scaffolds": 167,
+                "pactivity_median": 8.12,
+                "pactivity_iqr": 1.290000000000001,
+                "active_rate": 0.8761061946902655,
+                "year_min": 2022,
+                "year_max": 2023
+              },
+              "validation_unseen_scaffold_rate": 0.967551622418879
+            }
+          },
+          "development": {
+            "n": 2538,
+            "n_scaffolds": 1072,
+            "pactivity_median": 7.36,
+            "pactivity_iqr": 1.7100000000000009,
+            "active_rate": 0.7253743104806935,
+            "year_min": 2001,
+            "year_max": 2023
+          },
+          "exploratory": {
+            "n": 192,
+            "n_scaffolds": 101,
+            "pactivity_median": 7.285,
+            "pactivity_iqr": 1.8600000000000003,
+            "active_rate": 0.734375,
+            "year_min": 2024,
+            "year_max": 2025
+          }
+        },
+        "single_protein_assay_ge10": {
+          "specification": {
+            "bao_formats": [
+              "BAO_0000357"
+            ],
+            "variant_classes": [
+              "EXPLICIT_WT",
+              "UNSPECIFIED"
+            ],
+            "minimum_assay_size": 10
+          },
+          "measurements": 2681,
+          "assays": 87,
+          "excluded_inconsistent_compounds": 28,
+          "all_compounds": {
+            "n": 2527,
+            "n_scaffolds": 1069,
+            "pactivity_median": 7.36,
+            "pactivity_iqr": 1.660000000000001,
+            "active_rate": 0.7309062129006727,
+            "year_min": 2001,
+            "year_max": 2025
+          },
+          "folds": {
+            "fold_a": {
+              "train": {
+                "n": 1788,
+                "n_scaffolds": 735,
+                "pactivity_median": 7.3,
+                "pactivity_iqr": 1.6749999999999998,
+                "active_rate": 0.714765100671141,
+                "year_min": 2001,
+                "year_max": 2019
+              },
+              "validation": {
+                "n": 294,
+                "n_scaffolds": 122,
+                "pactivity_median": 7.285,
+                "pactivity_iqr": 1.4249999999999998,
+                "active_rate": 0.7006802721088435,
+                "year_min": 2020,
+                "year_max": 2021
+              },
+              "validation_unseen_scaffold_rate": 1.0
+            },
+            "fold_b": {
+              "train": {
+                "n": 2082,
+                "n_scaffolds": 857,
+                "pactivity_median": 7.3,
+                "pactivity_iqr": 1.62,
+                "active_rate": 0.712776176753122,
+                "year_min": 2001,
+                "year_max": 2021
+              },
+              "validation": {
+                "n": 292,
+                "n_scaffolds": 146,
+                "pactivity_median": 8.105,
+                "pactivity_iqr": 1.2824999999999998,
+                "active_rate": 0.863013698630137,
+                "year_min": 2022,
+                "year_max": 2023
+              },
+              "validation_unseen_scaffold_rate": 1.0
+            }
+          },
+          "development": {
+            "n": 2374,
+            "n_scaffolds": 1003,
+            "pactivity_median": 7.37,
+            "pactivity_iqr": 1.6900000000000004,
+            "active_rate": 0.7312552653748947,
+            "year_min": 2001,
+            "year_max": 2023
+          },
+          "exploratory": {
+            "n": 153,
+            "n_scaffolds": 72,
+            "pactivity_median": 7.07,
+            "pactivity_iqr": 1.7800000000000002,
+            "active_rate": 0.7254901960784313,
+            "year_min": 2024,
+            "year_max": 2025
+          }
+        }
+      }
+    },
+    "BRD4": {
+      "source": "historical_workspace/data/external/chembl/CHEMBL1163125_activities.jsonl",
+      "source_sha256": "a6b32c7c3bf6337d10a01d7569c07c53e8368f1651f87569ab1de08e094e74b8",
+      "base_measurements": 10859,
+      "base_unique_molecules": 7965,
+      "variant_counts": {
+        "UNSPECIFIED": 10021,
+        "OTHER_MUTANT": 831,
+        "EXPLICIT_WT": 7
+      },
+      "profiles": {
+        "single_protein_assay_ge5": {
+          "specification": {
+            "bao_formats": [
+              "BAO_0000357"
+            ],
+            "variant_classes": [
+              "EXPLICIT_WT",
+              "UNSPECIFIED"
+            ],
+            "minimum_assay_size": 5
+          },
+          "measurements": 7775,
+          "assays": 224,
+          "excluded_inconsistent_compounds": 164,
+          "all_compounds": {
+            "n": 5830,
+            "n_scaffolds": 2243,
+            "pactivity_median": 6.26,
+            "pactivity_iqr": 1.9900000000000002,
+            "active_rate": 0.44219554030874786,
+            "year_min": 2010,
+            "year_max": 2025
+          },
+          "folds": {
+            "fold_a": {
+              "train": {
+                "n": 2576,
+                "n_scaffolds": 1051,
+                "pactivity_median": 6.195,
+                "pactivity_iqr": 1.7300000000000004,
+                "active_rate": 0.4076086956521739,
+                "year_min": 2010,
+                "year_max": 2019
+              },
+              "validation": {
+                "n": 1220,
+                "n_scaffolds": 376,
+                "pactivity_median": 7.29,
+                "pactivity_iqr": 2.1187500000000004,
+                "active_rate": 0.6811475409836065,
+                "year_min": 2020,
+                "year_max": 2021
+              },
+              "validation_unseen_scaffold_rate": 0.9352459016393443
+            },
+            "fold_b": {
+              "train": {
+                "n": 3796,
+                "n_scaffolds": 1408,
+                "pactivity_median": 6.46,
+                "pactivity_iqr": 1.9500000000000002,
+                "active_rate": 0.49552160168598525,
+                "year_min": 2010,
+                "year_max": 2021
+              },
+              "validation": {
+                "n": 1686,
+                "n_scaffolds": 646,
+                "pactivity_median": 5.800000000000001,
+                "pactivity_iqr": 2.3600000000000003,
+                "active_rate": 0.2858837485172005,
+                "year_min": 2022,
+                "year_max": 2023
+              },
+              "validation_unseen_scaffold_rate": 0.965005931198102
+            }
+          },
+          "development": {
+            "n": 5482,
+            "n_scaffolds": 2039,
+            "pactivity_median": 6.26,
+            "pactivity_iqr": 2.0299999999999994,
+            "active_rate": 0.4310470631156512,
+            "year_min": 2010,
+            "year_max": 2023
+          },
+          "exploratory": {
+            "n": 348,
+            "n_scaffolds": 208,
+            "pactivity_median": 6.692500000000001,
+            "pactivity_iqr": 0.9175000000000004,
+            "active_rate": 0.617816091954023,
+            "year_min": 2024,
+            "year_max": 2025
+          }
+        },
+        "single_protein_assay_ge10": {
+          "specification": {
+            "bao_formats": [
+              "BAO_0000357"
+            ],
+            "variant_classes": [
+              "EXPLICIT_WT",
+              "UNSPECIFIED"
+            ],
+            "minimum_assay_size": 10
+          },
+          "measurements": 7380,
+          "assays": 165,
+          "excluded_inconsistent_compounds": 152,
+          "all_compounds": {
+            "n": 5578,
+            "n_scaffolds": 2106,
+            "pactivity_median": 6.26,
+            "pactivity_iqr": 1.9800000000000004,
+            "active_rate": 0.44030118321979206,
+            "year_min": 2012,
+            "year_max": 2025
+          },
+          "folds": {
+            "fold_a": {
+              "train": {
+                "n": 2452,
+                "n_scaffolds": 982,
+                "pactivity_median": 6.2,
+                "pactivity_iqr": 1.6999999999999993,
+                "active_rate": 0.40905383360522024,
+                "year_min": 2012,
+                "year_max": 2019
+              },
+              "validation": {
+                "n": 1162,
+                "n_scaffolds": 344,
+                "pactivity_median": 7.29,
+                "pactivity_iqr": 2.1575000000000006,
+                "active_rate": 0.6746987951807228,
+                "year_min": 2020,
+                "year_max": 2021
+              },
+              "validation_unseen_scaffold_rate": 0.9466437177280551
+            },
+            "fold_b": {
+              "train": {
+                "n": 3614,
+                "n_scaffolds": 1309,
+                "pactivity_median": 6.449999999999999,
+                "pactivity_iqr": 1.92,
+                "active_rate": 0.49446596568898726,
+                "year_min": 2012,
+                "year_max": 2021
+              },
+              "validation": {
+                "n": 1631,
+                "n_scaffolds": 612,
+                "pactivity_median": 5.8,
+                "pactivity_iqr": 2.3600000000000003,
+                "active_rate": 0.2838749233599019,
+                "year_min": 2022,
+                "year_max": 2023
+              },
+              "validation_unseen_scaffold_rate": 0.9717964438994482
+            }
+          },
+          "development": {
+            "n": 5245,
+            "n_scaffolds": 1910,
+            "pactivity_median": 6.26,
+            "pactivity_iqr": 2.0199999999999996,
+            "active_rate": 0.42897998093422307,
+            "year_min": 2012,
+            "year_max": 2023
+          },
+          "exploratory": {
+            "n": 333,
+            "n_scaffolds": 199,
+            "pactivity_median": 6.68,
+            "pactivity_iqr": 0.8799999999999999,
+            "active_rate": 0.6186186186186187,
+            "year_min": 2024,
+            "year_max": 2025
+          }
+        }
+      }
+    }
+  }
+}

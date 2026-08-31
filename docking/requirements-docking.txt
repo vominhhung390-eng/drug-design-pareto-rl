@@ -1,0 +1,7 @@
+gemmi==0.7.5
+meeko==0.7.1
+numpy==2.2.6
+pandas==2.3.3
+pillow==12.3.0
+rdkit==2026.3.4
+scipy==1.15.3

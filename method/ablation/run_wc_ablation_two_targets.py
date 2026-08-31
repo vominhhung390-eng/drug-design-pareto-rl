@@ -7,9 +7,8 @@ This script keeps the original three-objective ablation untouched and runs a
 clean two-objective setup:
     objectives = [EGFR activity, VEGFR2 activity]
 
-QED may still be used internally by the inherited quality penalty logic in the
-target predictor wrapper, but it is not an optimization objective, reward
-dimension, Pareto dimension, hypervolume dimension, or dynamic-weight dimension.
+QED is audited separately and never modifies the shared EGFR/VEGFR2 oracle
+values used for optimization, Pareto ranking, or reporting.
 """
 
 from __future__ import annotations
@@ -62,7 +61,14 @@ except Exception:
 
 
 OBJECTIVE_NAMES = ["EGFR", "VEGFR2"]
-REF_POINT = np.array([0.0, 0.0], dtype=np.float32)
+ACTIVITY_LOWER = 3.0
+# Evaluation bound, deliberately distinct from the optimizer's 6.5
+# desirability saturation.  pActivity 10 corresponds to 0.1 nM and remains
+# inside the locked RF models' leaf-value support (EGFR 1.26-11.22; VEGFR2
+# 3.92-10.62), preventing routine generated molecules from saturating HV.
+ACTIVITY_UPPER = 10.0
+RAW_REF_POINT = np.array([ACTIVITY_LOWER, ACTIVITY_LOWER], dtype=np.float32)
+HV_REF_POINT = np.array([0.0, 0.0], dtype=np.float32)
 
 
 @dataclass
@@ -81,11 +87,24 @@ class VariantResult:
 
 
 class TwoTargetObjectiveCalculator(ObjectiveCalculator):
-    """Return only EGFR and VEGFR2 scores from the existing predictor stack."""
+    """Return the unmodified shared EGFR and VEGFR2 RF predictions.
+
+    Molecular quality belongs to separate QED/SA/alert metrics.  Applying the
+    legacy SMILES-length penalty to activity here would make the primary method
+    use a different oracle from the five external baselines.
+    """
 
     def calculate_scores(self, smiles: str) -> np.ndarray:
-        full_scores = super().calculate_scores(smiles)
-        return np.asarray(full_scores[:2], dtype=np.float32)
+        fingerprint = self._smiles_to_fingerprint(smiles).reshape(1, -1)
+        egfr = (
+            float(self.egfr_model.predict(fingerprint)[0])
+            if self.egfr_model is not None else 0.0
+        )
+        vegfr2 = (
+            float(self.vegfr2_model.predict(fingerprint)[0])
+            if self.vegfr2_model is not None else 0.0
+        )
+        return np.asarray([egfr, vegfr2], dtype=np.float32)
 
     def calculate_scores_batch(self, smiles_list: Sequence[str]) -> np.ndarray:
         """Vectorized target prediction for a decoded molecule batch."""
@@ -102,16 +121,7 @@ class TwoTargetObjectiveCalculator(ObjectiveCalculator):
             np.asarray(self.vegfr2_model.predict(fingerprints), dtype=np.float32)
             if self.vegfr2_model is not None else np.zeros(len(smiles_list), dtype=np.float32)
         )
-        scores = np.column_stack([egfr, vegfr2]).astype(np.float32)
-        for i, smiles in enumerate(smiles_list):
-            # The inherited quality penalty has the same multiplicative factor
-            # for both target scores; QED is not an optimization dimension here.
-            penalized = self._apply_quality_penalties(
-                smiles, float(scores[i, 0]), float(scores[i, 1]), 1.0
-            )
-            scores[i, 0] = penalized[0]
-            scores[i, 1] = penalized[1]
-        return scores
+        return np.column_stack([egfr, vegfr2]).astype(np.float32)
 
 
 class TrajectoryMultiCriticPPOAgent(MultiCriticPPOAgent):
@@ -488,8 +498,18 @@ def pareto_points_2d(points: np.ndarray) -> np.ndarray:
     return np.asarray(front, dtype=np.float32)
 
 
-def hypervolume_2d(points: np.ndarray, ref_point: np.ndarray = REF_POINT) -> float:
-    front = pareto_points_2d(np.asarray(points, dtype=np.float32))
+def normalize_activity_scores(points: np.ndarray) -> np.ndarray:
+    points = np.asarray(points, dtype=np.float32)
+    return np.clip(
+        (points - ACTIVITY_LOWER) / (ACTIVITY_UPPER - ACTIVITY_LOWER),
+        0.0,
+        1.0,
+    )
+
+
+def hypervolume_2d(points: np.ndarray, ref_point: np.ndarray = HV_REF_POINT) -> float:
+    """Pre-registered [0, 1] activity-space hypervolume."""
+    front = pareto_points_2d(normalize_activity_scores(points))
     if len(front) == 0:
         return 0.0
     front = front[np.argsort(front[:, 0])]

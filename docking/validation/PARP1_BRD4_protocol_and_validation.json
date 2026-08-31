@@ -1,0 +1,121 @@
+{
+  "candidate_selection": "Top-5 quality_pass unique molecules per method across completed formal seeds at 10,240 oracle calls, ranked by min predicted PARP1/BRD4 activity",
+  "targets": {
+    "PARP1": {
+      "pdb_id": "7KK4",
+      "ligand": "09L",
+      "chain": "A",
+      "source_url": "https://www.rcsb.org/structure/7KK4",
+      "resolution_angstrom": 1.96,
+      "protein_pdb": "receptors\\7KK4_chainA_protein.pdb",
+      "receptor_pdbqt": "receptors\\7KK4_prepared.pdbqt",
+      "crystal_ligand_sdf": "receptors\\7KK4_09L_crystal.sdf",
+      "box_center": [
+        -9.294,
+        6.13,
+        26.348
+      ],
+      "box_size": [
+        22.0,
+        24.211,
+        22.0
+      ]
+    },
+    "BRD4": {
+      "pdb_id": "3MXF",
+      "ligand": "JQ1",
+      "chain": "A",
+      "source_url": "https://www.rcsb.org/structure/3MXF",
+      "resolution_angstrom": 1.6,
+      "protein_pdb": "receptors\\3MXF_chainA_protein.pdb",
+      "receptor_pdbqt": "receptors\\3MXF_prepared.pdbqt",
+      "crystal_ligand_sdf": "receptors\\3MXF_JQ1_crystal.sdf",
+      "box_center": [
+        28.751,
+        15.826,
+        -2.335
+      ],
+      "box_size": [
+        22.0,
+        22.0,
+        22.0
+      ]
+    }
+  },
+  "redocking_validation": {
+    "PARP1": {
+      "target": "PARP1",
+      "pdb_id": "7KK4",
+      "crystal_ligand": "09L",
+      "best_affinity_kcal_mol": -14.3,
+      "all_affinities_kcal_mol": [
+        -14.3,
+        -12.6,
+        -12.3,
+        -12.2,
+        -12.2,
+        -11.7,
+        -11.4,
+        -11.3,
+        -11.2
+      ],
+      "top_scoring_pose_crystal_rmsd_angstrom": 0.25670952699500654,
+      "all_pose_crystal_rmsd_angstrom": [
+        0.25670952699500654,
+        2.104779464397636,
+        2.850378960550684,
+        4.020994742442472,
+        3.6088768812124914,
+        1.7169348961157496,
+        2.4478373618359535,
+        3.7917831103914685,
+        4.15616834130308
+      ],
+      "acceptance_rule": "top-scoring-pose symmetry-aware no-fit heavy-atom RMSD <= 2.0 A",
+      "passed": true
+    },
+    "BRD4": {
+      "target": "BRD4",
+      "pdb_id": "3MXF",
+      "crystal_ligand": "JQ1",
+      "best_affinity_kcal_mol": -8.7,
+      "all_affinities_kcal_mol": [
+        -8.7,
+        -8.5,
+        -8.1,
+        -7.1,
+        -7.0,
+        -7.0,
+        -6.8,
+        -6.8,
+        -6.7
+      ],
+      "top_scoring_pose_crystal_rmsd_angstrom": 0.45557068075249324,
+      "all_pose_crystal_rmsd_angstrom": [
+        0.45557068075249324,
+        1.4147025904248705,
+        1.4128429586498463,
+        5.9306377506160555,
+        6.283132519537092,
+        5.926505672305643,
+        6.680943039962682,
+        6.5382986023049785,
+        5.932329888266988
+      ],
+      "acceptance_rule": "top-scoring-pose symmetry-aware no-fit heavy-atom RMSD <= 2.0 A",
+      "passed": true
+    }
+  },
+  "vina": {
+    "exhaustiveness": 32,
+    "num_modes": 9,
+    "energy_range_kcal_mol": 5,
+    "cpu_per_job": 4,
+    "max_parallel_jobs": 4,
+    "fixed_seed_base": 202608100
+  },
+  "macrocycle_policy": "Meeko rigid_macrocycles was enabled for Vina 1.1.2 compatibility; this affects the macrocyclic candidate MTH05.",
+  "dual_pass_rule": "PARP1 Vina <= -7.0 and BRD4 Vina <= -7.0 kcal/mol",
+  "pose_plausibility_rule": "both targets: >=5 residues within 4 A; >=1 target pocket anchor within 4 A; no heavy-atom distance <1.2 A; ligand centroid inside box",
+  "confidence_interval": "nonparametric bootstrap 95% interval of the median, 10,000 resamples, n=5"
+}

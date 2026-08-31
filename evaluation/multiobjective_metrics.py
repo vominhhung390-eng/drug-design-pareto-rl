@@ -10,6 +10,20 @@ from typing import Iterable
 import numpy as np
 
 
+ACTIVITY_LOWER = 3.0
+ACTIVITY_UPPER = 10.0
+
+
+def normalize_activity(points: np.ndarray) -> np.ndarray:
+    """Map pre-registered pActivity scores to the common [0, 1] HV space."""
+    points = np.asarray(points, dtype=float)
+    return np.clip(
+        (points - ACTIVITY_LOWER) / (ACTIVITY_UPPER - ACTIVITY_LOWER),
+        0.0,
+        1.0,
+    )
+
+
 def nondominated_mask(points: np.ndarray) -> np.ndarray:
     points = np.asarray(points, dtype=float)
     if points.ndim != 2:
@@ -34,7 +48,7 @@ def pareto_front(points: np.ndarray) -> np.ndarray:
 
 def hypervolume_2d(points: np.ndarray, reference: Iterable[float] = (0.0, 0.0)) -> float:
     ref = np.asarray(tuple(reference), dtype=float)
-    front = pareto_front(np.asarray(points, dtype=float))
+    front = pareto_front(normalize_activity(np.asarray(points, dtype=float)))
     front = front[np.all(front > ref, axis=1)]
     if not len(front):
         return 0.0

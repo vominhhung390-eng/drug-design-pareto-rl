@@ -10,18 +10,32 @@ from pathlib import Path
 
 import numpy as np
 import pandas as pd
-from rdkit import Chem, DataStructs
+from rdkit import Chem, DataStructs, RDLogger
 from rdkit.Chem import AllChem, Descriptors, FilterCatalog, QED
 from rdkit.Chem.Scaffolds import MurckoScaffold
 
 from multiobjective_metrics import hypervolume_2d, igd_plus, pareto_front, spacing, spread
 
 
+# Invalid generator outputs are counted through ``valid_rows``.  Suppress the
+# corresponding per-row parser diagnostics so large formal evaluations remain
+# readable without changing any metric.
+RDLogger.DisableLog("rdApp.error")
+RDLogger.DisableLog("rdApp.warning")
+
+
 def canonicalize(smiles: str) -> tuple[str | None, Chem.Mol | None]:
-    mol = Chem.MolFromSmiles(str(smiles))
-    if mol is None:
+    try:
+        mol = Chem.MolFromSmiles(str(smiles))
+        if mol is None:
+            return None, None
+        fragments = Chem.GetMolFrags(mol, asMols=True, sanitizeFrags=True)
+        if not fragments:
+            return None, None
+        mol = max(fragments, key=lambda item: item.GetNumHeavyAtoms())
+        return Chem.MolToSmiles(mol, canonical=True, isomericSmiles=True), mol
+    except (ValueError, RuntimeError, Chem.rdchem.KekulizeException):
         return None, None
-    return Chem.MolToSmiles(mol, canonical=True), mol
 
 
 def scaffold(mol: Chem.Mol) -> str:

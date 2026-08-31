@@ -1,0 +1,37 @@
+{
+  "run_id": "predictor_retraining_20260730",
+  "source_dir": "results/predictor_validation_20260729/chembl_strict",
+  "output_dir": "results/predictor_retraining_20260730",
+  "targets": {
+    "EGFR": "egfr_aggregated_compounds.csv",
+    "VEGFR2": "vegfr2_aggregated_compounds.csv"
+  },
+  "historical_end_year": 2023,
+  "temporal_start_year": 2024,
+  "validation_fraction": 0.15,
+  "random_seed": 42,
+  "activity_threshold": 6.5,
+  "ensemble_size": 5,
+  "epochs": 50,
+  "patience": 10,
+  "batch_size": 128,
+  "acceptance_gates": {
+    "scaffold_validation": {
+      "r2_min": 0.50,
+      "rmse_max": 0.90,
+      "spearman_min": 0.65,
+      "auroc_min": 0.75
+    },
+    "temporal_test": {
+      "r2_min": 0.30,
+      "rmse_max": 0.95,
+      "spearman_min": 0.50,
+      "auroc_min": 0.72
+    }
+  },
+  "notes": [
+    "The 2024+ temporal cohort is never used for fitting, early stopping, calibration, or hyperparameter selection.",
+    "Validation is scaffold-disjoint from training and is used for early stopping and conformal calibration.",
+    "Acceptance thresholds were frozen before D-MPNN training. Failure does not trigger test-set tuning."
+  ]
+}

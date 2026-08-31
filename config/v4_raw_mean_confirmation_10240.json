@@ -1,0 +1,65 @@
+{
+  "experiment_id": "v4_raw_mean_vs_polygon_paired_confirmation_10240",
+  "status": "prospective paired confirmation; no tuning permitted",
+  "selected_from": "config/v4_hv_aligned_generator_screening_5120.json",
+  "oracle_budget": 10240,
+  "batch_size": 64,
+  "seeds": [82, 83, 84, 85, 86, 87, 88, 89, 90, 91],
+  "max_concurrent": 3,
+  "common": {
+    "archive_seed_start": 0.30,
+    "archive_seed_ramp_end": 0.70,
+    "archive_seed_noise": 0.10,
+    "archive_seed_noise_end": 0.05,
+    "pareto_reward_start": 0.30,
+    "pareto_reward_ramp_end": 0.70,
+    "trajectory_length": 1,
+    "controller_variant": "ours_full_corrected"
+  },
+  "variants": {
+    "v4_b_raw_mean": {
+      "actor_mode": "train",
+      "generator_finetune_interval": 16,
+      "generator_finetune_epochs": 2,
+      "generator_finetune_top": 512,
+      "generator_finetune_batch_size": 512,
+      "generator_finetune_lr": 0.0003,
+      "generator_elite_strategy": "raw_mean",
+      "archive_seed_fraction": 0.0,
+      "archive_seed_selection": "uniform",
+      "archive_hvc_weight": 0.7,
+      "archive_balance_weight": 0.3,
+      "archive_selection_temperature": 0.25,
+      "archive_uniform_mix": 0.10,
+      "archive_stagnation_window": 0,
+      "archive_stagnation_delta": 0.002,
+      "archive_stagnation_noise": 0.0,
+      "hvc_reward_weight": 0.0,
+      "crowding_reward_weight": 0.0,
+      "balanced_reward_weight": 0.0,
+      "pareto_actor_coef": 0.0,
+      "sample_preference_mode": "shared",
+      "sample_preference_blend": 0.0,
+      "sample_preference_start": 0.30,
+      "sample_preference_ramp_end": 0.70
+    }
+  },
+  "polygon_protocol": {
+    "adapter": "baselines/polygon_adapter/adapter_optimize_dual_oracle.py",
+    "batch_size": 1024,
+    "keep_top": 512,
+    "finetune_epochs": 2,
+    "finetune_batch_size_argument": 256,
+    "effective_trainer_batch_size": 512,
+    "temperature": 1.0,
+    "same_initial_checkpoint": true
+  },
+  "acceptance_gate": {
+    "paired_mean_hv_gain_vs_polygon": 0.005,
+    "wins_vs_polygon_required": 6,
+    "wins_total": 10,
+    "validity_minimum": 0.85,
+    "quality_constrained_hv_must_not_drop": true,
+    "paired_test_alpha": 0.05
+  }
+}

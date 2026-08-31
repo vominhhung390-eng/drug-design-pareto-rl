@@ -1,0 +1,53 @@
+{
+  "run_id": "predictor_pik3ca_mtor_20260804",
+  "output_dir": "results/predictor_pik3ca_mtor_20260804",
+  "targets": ["PI3Kalpha", "mTOR"],
+  "target_ids": {
+    "PI3Kalpha": "CHEMBL4005",
+    "mTOR": "CHEMBL2842"
+  },
+  "sources": {
+    "PI3Kalpha": "data/external/chembl/CHEMBL4005_activities.jsonl",
+    "mTOR": "data/external/chembl/CHEMBL2842_activities.jsonl"
+  },
+  "endpoint": "IC50",
+  "max_within_compound_pactivity_span": 1.5,
+  "activity_threshold": 6.5,
+  "profiles": {
+    "single_protein_assay_ge5": {
+      "bao_formats": ["BAO_0000357"],
+      "variant_classes": ["EXPLICIT_WT", "UNSPECIFIED"],
+      "minimum_assay_size": 5
+    },
+    "single_protein_assay_ge10": {
+      "bao_formats": ["BAO_0000357"],
+      "variant_classes": ["EXPLICIT_WT", "UNSPECIFIED"],
+      "minimum_assay_size": 10
+    }
+  },
+  "rolling_folds": [
+    {
+      "name": "fold_a",
+      "train_end_year": 2019,
+      "validation_start_year": 2020,
+      "validation_end_year": 2021
+    },
+    {
+      "name": "fold_b",
+      "train_end_year": 2021,
+      "validation_start_year": 2022,
+      "validation_end_year": 2023
+    }
+  ],
+  "development_end_year": 2023,
+  "exploratory_start_year": 2024,
+  "random_seed": 42,
+  "acceptance": {
+    "mean_temporal_spearman_min": 0.50,
+    "mean_temporal_rmse_max": 1.00,
+    "mean_temporal_auroc_min": 0.75,
+    "minimum_temporal_validation_n_per_fold": 50,
+    "minimum_2024plus_test_n": 50
+  },
+  "selection_policy": "Select the profile and model on two rolling historical folds by mean temporal Spearman, subject to RMSE and minimum-n constraints. ChEMBL records first reported in 2024 or later are a locked test set and cannot select the model."
+}

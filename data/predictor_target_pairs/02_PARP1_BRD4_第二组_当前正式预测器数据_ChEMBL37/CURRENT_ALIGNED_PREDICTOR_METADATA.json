@@ -1,0 +1,50 @@
+{
+  "schema_version": "dual-target-rf-v1",
+  "target_pair": [
+    "PARP1",
+    "BRD4"
+  ],
+  "target_ids": {
+    "PARP1": "CHEMBL3105",
+    "BRD4": "CHEMBL1163125"
+  },
+  "chembl_release": "ChEMBL_37",
+  "endpoint": "human binding IC50, exact relation, nM, single protein",
+  "profiles": {
+    "PARP1": "single_protein_assay_ge5",
+    "BRD4": "single_protein_assay_ge10"
+  },
+  "training_cutoff": 2023,
+  "locked_test_start": 2024,
+  "activity_threshold_pIC50": 6.5,
+  "model": {
+    "class": "sklearn.ensemble.RandomForestRegressor",
+    "sklearn_version": "1.7.2",
+    "preset": "legacy_egfr_vegfr2_aligned",
+    "n_estimators": 1000,
+    "max_features": 1.0,
+    "min_samples_leaf": 1,
+    "random_state": 0,
+    "other_hyperparameters": "sklearn defaults"
+  },
+  "features": {
+    "type": "Morgan bit vector (ECFP4)",
+    "radius": 2,
+    "n_bits": 2048,
+    "include_chirality": true
+  },
+  "selection_rule": "The target pair and assay-size profiles were fixed previously. For the legacy-aligned preset, model hyperparameters were copied exactly from the prior EGFR/VEGFR2 oracle and were not selected to maximize PARP1/BRD4 hit rates. The 2024+ cohort is a repeat audit because it was opened in the original 20260804 qualification and is not claimed as a new locked test.",
+  "intended_use": "shared relative pActivity ranking oracle for all methods",
+  "absolute_activity_claims_allowed": false,
+  "data_sha256": {
+    "PARP1_development_through_2023.csv": "33c46866bd96a310f75576836858870be3eb1994c88340e9e53f55cec808a901",
+    "PARP1_locked_2024plus.csv": "fb8e82fac20610cb1fc68c9cb35dcd5633f80b062eb053ab5a54fa3f1d01c304",
+    "BRD4_development_through_2023.csv": "9f47dc8ac1b7d4e78612b5c9b34891c1d2763e5d5591d3bfbcddd383a080d73f",
+    "BRD4_locked_2024plus.csv": "c7dba5cf20b83dc08a3e4eb2355edb8a8b4cd87eee46d130bfcbebf97551ff1b"
+  },
+  "metrics_file": "results\\predictor_parp1_brd4_egfr_vegfr2_aligned_20260826\\legacy_aligned_validation\\metrics.csv",
+  "models": {
+    "PARP1": "results\\predictor_parp1_brd4_egfr_vegfr2_aligned_20260826\\legacy_aligned_models\\target_PARP1_model.pkl",
+    "BRD4": "results\\predictor_parp1_brd4_egfr_vegfr2_aligned_20260826\\legacy_aligned_models\\target_BRD4_model.pkl"
+  }
+}

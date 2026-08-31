@@ -1,0 +1,17 @@
+[io]
+smiles_file = "../../data/train_smiles_only.txt"
+model_file = "../../results/baselines/reinvent4/models/reinvent4_random_init.model"
+
+[network]
+num_layers = 3
+layer_size = 512
+dropout = 0.0
+max_sequence_length = 128
+cell_type = "lstm"
+embedding_layer_size = 256
+layer_normalization = false
+standardize = false
+
+[metadata]
+data_source = "train_smiles_only.txt sha256=4301e7f6118839465012eb93510328681ef4b7b24642e8748c4ad40971f4a304"
+comment = "Randomly initialized REINVENT4 prior; no pretrained weights"

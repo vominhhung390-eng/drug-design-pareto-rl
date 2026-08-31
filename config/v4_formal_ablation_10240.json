@@ -1,0 +1,102 @@
+{
+  "experiment_id": "v4_b_component_ablation_10240",
+  "status": "prospectively registered formal paired ablation; no tuning permitted",
+  "registered_at": "2026-07-26T13:30:00+08:00",
+  "selected_method": "config/selected_own_method.json",
+  "oracle_budget": 10240,
+  "batch_size": 64,
+  "seeds": [92, 93, 94, 95, 96, 97, 98, 99, 100, 101],
+  "recommended_max_concurrent": 4,
+  "primary_endpoint": "normalized activity hypervolume at 10240 oracle calls",
+  "key_secondary_endpoint": "quality-constrained hypervolume at 10240 oracle calls",
+  "multiplicity": "Holm correction across the seven single-factor comparisons against A0; factorial interactions reported separately",
+  "equivalence_margin_hv": 0.01,
+  "common": {
+    "archive_seed_start": 0.30,
+    "archive_seed_ramp_end": 0.70,
+    "archive_seed_noise": 0.10,
+    "archive_seed_noise_end": 0.05,
+    "pareto_reward_start": 0.30,
+    "pareto_reward_ramp_end": 0.70,
+    "trajectory_length": 1,
+    "controller_variant": "ours_full_corrected"
+  },
+  "base_variant": {
+    "actor_mode": "train",
+    "generator_finetune_interval": 16,
+    "generator_finetune_epochs": 2,
+    "generator_finetune_top": 512,
+    "generator_finetune_batch_size": 512,
+    "generator_finetune_lr": 0.0003,
+    "generator_elite_strategy": "raw_mean",
+    "weight_mode": "dynamic",
+    "critic_mode": "multi",
+    "channel_mode": "adaptive",
+    "exploration_mode": "multiscale",
+    "archive_seed_fraction": 0.0,
+    "archive_seed_selection": "uniform",
+    "archive_hvc_weight": 0.7,
+    "archive_balance_weight": 0.3,
+    "archive_selection_temperature": 0.25,
+    "archive_uniform_mix": 0.10,
+    "archive_stagnation_window": 0,
+    "archive_stagnation_delta": 0.002,
+    "archive_stagnation_noise": 0.0,
+    "hvc_reward_weight": 0.0,
+    "crowding_reward_weight": 0.0,
+    "balanced_reward_weight": 0.0,
+    "pareto_actor_coef": 0.0,
+    "sample_preference_mode": "shared",
+    "sample_preference_blend": 0.0,
+    "sample_preference_start": 0.30,
+    "sample_preference_ramp_end": 0.70
+  },
+  "variants": {
+    "a0_full_v4b": {
+      "label": "Full V4-B",
+      "purpose": "Reference configuration"
+    },
+    "a1_batch256": {
+      "label": "VAE batch 256",
+      "purpose": "Audit whether the gain depends on the stronger online VAE update batch",
+      "generator_finetune_batch_size": 256
+    },
+    "a2_no_online_vae": {
+      "label": "No online VAE",
+      "purpose": "Isolate online generator adaptation",
+      "generator_finetune_interval": 0,
+      "generator_finetune_epochs": 0
+    },
+    "a3_legacy_elite": {
+      "label": "Legacy elite ranking",
+      "purpose": "Isolate HV-range-aligned raw-mean elite replay",
+      "generator_elite_strategy": "mean"
+    },
+    "a4_frozen_actor": {
+      "label": "Frozen actor",
+      "purpose": "Isolate learned PPO policy updates from actor architecture",
+      "actor_mode": "frozen"
+    },
+    "a5_fixed_weight": {
+      "label": "Fixed objective weights",
+      "purpose": "Isolate three-stage dynamic preference weighting",
+      "weight_mode": "fixed"
+    },
+    "a6_single_critic": {
+      "label": "Single critic",
+      "purpose": "Isolate objective-specific multi-critic value estimation",
+      "critic_mode": "single"
+    },
+    "a7_nonadaptive_channels": {
+      "label": "No online channel reallocation",
+      "purpose": "Isolate Pareto/HV-feedback channel adaptation while retaining the three-stage multiscale prior",
+      "channel_mode": "fixed"
+    },
+    "a8_single_fixed": {
+      "label": "Single critic plus fixed weights",
+      "purpose": "Complete the 2x2 critic-by-weight factorial design",
+      "critic_mode": "single",
+      "weight_mode": "fixed"
+    }
+  }
+}

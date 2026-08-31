@@ -1,0 +1,64 @@
+{
+  "PARP1": {
+    "target": "PARP1",
+    "pdb_id": "7KK4",
+    "crystal_ligand": "09L",
+    "best_affinity_kcal_mol": -14.3,
+    "all_affinities_kcal_mol": [
+      -14.3,
+      -12.6,
+      -12.3,
+      -12.2,
+      -12.2,
+      -11.7,
+      -11.4,
+      -11.3,
+      -11.2
+    ],
+    "top_scoring_pose_crystal_rmsd_angstrom": 0.25670952699500654,
+    "all_pose_crystal_rmsd_angstrom": [
+      0.25670952699500654,
+      2.104779464397636,
+      2.850378960550684,
+      4.020994742442472,
+      3.6088768812124914,
+      1.7169348961157496,
+      2.4478373618359535,
+      3.7917831103914685,
+      4.15616834130308
+    ],
+    "acceptance_rule": "top-scoring-pose symmetry-aware no-fit heavy-atom RMSD <= 2.0 A",
+    "passed": true
+  },
+  "BRD4": {
+    "target": "BRD4",
+    "pdb_id": "3MXF",
+    "crystal_ligand": "JQ1",
+    "best_affinity_kcal_mol": -8.7,
+    "all_affinities_kcal_mol": [
+      -8.7,
+      -8.5,
+      -8.1,
+      -7.1,
+      -7.0,
+      -7.0,
+      -6.8,
+      -6.8,
+      -6.7
+    ],
+    "top_scoring_pose_crystal_rmsd_angstrom": 0.45557068075249324,
+    "all_pose_crystal_rmsd_angstrom": [
+      0.45557068075249324,
+      1.4147025904248705,
+      1.4128429586498463,
+      5.9306377506160555,
+      6.283132519537092,
+      5.926505672305643,
+      6.680943039962682,
+      6.5382986023049785,
+      5.932329888266988
+    ],
+    "acceptance_rule": "top-scoring-pose symmetry-aware no-fit heavy-atom RMSD <= 2.0 A",
+    "passed": true
+  }
+}

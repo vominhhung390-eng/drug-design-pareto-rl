@@ -267,6 +267,7 @@ class _Phase2Mixin:
     def _phase2_exploit(self, new_scores: np.ndarray) -> np.ndarray:
         if len(self.pareto_front.solutions) == 0:
             return np.ones(self.num_obj) / self.num_obj
+        front_array = np.asarray(self.pareto_front.solutions, dtype=float)
         batch_size = new_scores.shape[0]
         hv_contributions = np.array([
             _compute_hvc(new_scores[i], self.pareto_front.solutions,
@@ -283,10 +284,20 @@ class _Phase2Mixin:
         sum_w = np.sum(hvc_weights)
         if sum_w > 0:
             weighted_obj = weighted_obj / sum_w
-        obj_min, obj_max = weighted_obj.min(), weighted_obj.max()
-        if obj_max > obj_min:
-            normalized_obj = (weighted_obj - obj_min) / (obj_max - obj_min)
-        else:
+        # Normalize every objective on its own observed range above the fixed
+        # reference point.  The previous implementation min-max normalized
+        # *across objectives*.  With two objectives that collapses almost every
+        # update to [1, 0] or [0, 1], so the HVC controller becomes a binary
+        # switch instead of a continuous Pareto-feedback signal.
+        combined = np.vstack([front_array, new_scores])
+        observed_upper = np.max(combined, axis=0)
+        span = np.maximum(observed_upper - self.ref_point, 1e-8)
+        normalized_obj = np.clip(
+            (weighted_obj - self.ref_point) / span,
+            0.0,
+            1.0,
+        )
+        if np.sum(normalized_obj) <= 1e-8:
             normalized_obj = np.ones(self.num_obj) * 0.5
         uniform_weight = np.ones(self.num_obj) / self.num_obj
         return 0.7 * normalized_obj / (np.sum(normalized_obj) + 1e-8) + 0.3 * uniform_weight

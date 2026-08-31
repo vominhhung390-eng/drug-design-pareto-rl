@@ -1,0 +1,6 @@
+{
+  "run_id": "download_flt3_only_20260804",
+  "output_dir": "results/predictor_jak2_flt3_20260804/flt3_parallel_download",
+  "target_ids": {"FLT3": "CHEMBL1974"},
+  "sources": {"FLT3": "data/external/chembl/CHEMBL1974_activities.jsonl"}
+}

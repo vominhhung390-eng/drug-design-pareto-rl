@@ -1,0 +1,35 @@
+{
+  "protocol_version": "predictor-reward-comparison-v1",
+  "experiment": "V4-B generation under original RF versus V4.1 predictor rewards",
+  "vae_model": "models/polygon_vae_best_valid_novel_stable_020.pt",
+  "batch_size": 64,
+  "trajectory_lengths": [1],
+  "trajectory_step_normalization": "sqrt",
+  "controller_variant": "ours_full_corrected",
+  "oracle_budgets": [10240],
+  "formal_seeds": [42, 43, 44, 45, 46, 47, 48, 49, 50, 51],
+  "paired_factors": {
+    "fixed": [
+      "seed",
+      "initial VAE",
+      "generation budget",
+      "batch size",
+      "Actor/Critic architecture",
+      "three-stage controller",
+      "exploration channels",
+      "generator self-training"
+    ],
+    "changed": "online EGFR/VEGFR2 reward predictor pair"
+  },
+  "oracle_systems": {
+    "original_rf": "raw pActivity regression followed by fixed [3,10] HV normalization",
+    "v41": "classification probabilities mapped online as reward=3+7*p, so fixed [3,10] HV normalization equals probability HV"
+  },
+  "activity_hv": {
+    "type": "linear_clipped",
+    "lower_pactivity": 3.0,
+    "upper_pactivity": 10.0,
+    "reference": [0.0, 0.0]
+  },
+  "primary_comparison": "2x2 cross-evaluated hypervolume matrix; generated sets are evaluated under both frozen predictor systems"
+}

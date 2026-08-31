@@ -1,0 +1,50 @@
+{
+  "protocol_version": 1,
+  "experiment_id": "parp1_brd4_own_v4b_egfr_vegfr2_aligned_oracle_20260827",
+  "status": "formal predictor-sensitivity rerun; V4-B method frozen; only the task-specific predictors are replaced",
+  "biological_scope": "dual PARP1/BRD4 small-molecule optimization; predicted binding only",
+  "target_pair": ["PARP1", "BRD4"],
+  "target_ids": {"PARP1": "CHEMBL3105", "BRD4": "CHEMBL1163125"},
+  "dataset": {
+    "path": "data/train_smiles_only.txt",
+    "sha256": "4301e7f6118839465012eb93510328681ef4b7b24642e8748c4ad40971f4a304",
+    "line_count": 1584663,
+    "role": "same target-independent source dataset used by the original formal experiment"
+  },
+  "predictors": {
+    "source_release": "ChEMBL_37",
+    "training_cutoff": 2023,
+    "audit_start": 2024,
+    "model_1": "results/predictor_parp1_brd4_egfr_vegfr2_aligned_20260826/legacy_aligned_models/target_PARP1_model.pkl",
+    "model_1_sha256": "280072ff8eba06f8b8cb14ab718b7a16061b34e1b2106c84ffe958f2e4427526",
+    "model_2": "results/predictor_parp1_brd4_egfr_vegfr2_aligned_20260826/legacy_aligned_models/target_BRD4_model.pkl",
+    "model_2_sha256": "c2f191245701566cf267081750bfeafe56204fbd5d849ca7f64633d686259708",
+    "features": "chiral Morgan/ECFP4, radius 2, 2048 bits",
+    "model": "RandomForestRegressor (scikit-learn 1.7.2), 1000 trees, max_features=1.0, min_samples_leaf=1, random_state=0",
+    "activity_threshold_pIC50": 6.5,
+    "validated_use": "relative candidate ranking and shared optimization reward only",
+    "absolute_activity_claims_allowed": false,
+    "qualification_metrics": "results/predictor_parp1_brd4_egfr_vegfr2_aligned_20260826/legacy_aligned_validation/metrics.csv",
+    "audit_note": "The 2024+ cohort was previously opened and is treated as a repeat audit, not a new locked test."
+  },
+  "compatibility_mapping": {
+    "egfr": "PARP1",
+    "vegfr2": "BRD4",
+    "note": "Legacy internal column names are retained so the frozen V4-B implementation remains unchanged."
+  },
+  "method": {
+    "name": "own_v4_b_raw_mean",
+    "runner": "method/ablation/run_wc_two_targets_multiexplore.py",
+    "policy": "all V4-B optimization parameters remain identical to the original PARP1-BRD4 formal experiment"
+  },
+  "evaluation": {
+    "smoke_budgets": [128, 512],
+    "formal_oracle_budget": 10240,
+    "anytime_checkpoints": [1024, 2048, 5120, 10240],
+    "formal_seeds": [42, 43, 44, 45, 46, 47, 48, 49, 50, 51],
+    "paired_seed_policy": "same formal seeds as the original experiment",
+    "reward_desirability": {"lower_pactivity": 3.0, "upper_pactivity": 6.5},
+    "activity_hv": {"lower_pactivity": 3.0, "upper_pactivity": 10.0, "reference": [0.0, 0.0]}
+  },
+  "result_root": "results/target_pairs/parp1_brd4_egfr_vegfr2_aligned_20260827"
+}

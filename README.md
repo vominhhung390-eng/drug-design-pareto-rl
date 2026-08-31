@@ -1,59 +1,69 @@
-# 自身方法改造
+# CLOVER-Mol 精简完整复现包
 
-这是从原 `D:\code` 工作区抽出的精简、可复现实验目录，只保留 EGFR/VEGFR2 双目标自身方法及其正式评估所需资产。原工作区未被修改。
+这个目录只保留从头复现论文实验所需的源码、数据、环境快照、训练参数、统一评价和分子对接脚本。历史权重、预处理张量、运行日志和大体积正式输出不作为下载依赖；它们都能由脚本重新生成。
 
-## 当前方法
+## 从 GitHub 获取
 
-- 锁定 POLYGON VAE 作为分子生成底座；
-- 双目标潜空间 PPO（EGFR、VEGFR2）；
-- 目标独立 Multi-Critic；
-- 三阶段动态目标权重；
-- 多温度、多步长探索通道及自适应分配；
-- K=1/3/5 真实时序潜空间轨迹，逐步状态转移并用 GAE 回传终点奖励；
-- QED、SA、Novelty 作为质量审计指标，不混入双目标主优化定义。
+共同训练集由 Git LFS 管理。首次下载前请安装 Git LFS，然后克隆仓库并确认大文件已经拉取：
 
-每条轨迹只在终点解码并调用一次 EGFR/VEGFR2 oracle，因此 K=1、3、5 使用完全相同的分子评价预算。中间步骤的目标奖励为 0，终点分数由目标独立 Critic 的 GAE 向前传播。默认使用 `1/sqrt(K)` 步长归一化，降低轨迹长度与原始搜索半径混杂的问题。
+```powershell
+git lfs install
+git clone https://github.com/vominhhung390-eng/drug-design-pareto-rl.git
+cd drug-design-pareto-rl
+git lfs pull
+```
 
-这里区分两个容易混淆的概念：探索通道中的“多步长”是不同的单步尺度 multiplier；`--trajectory-length` 才是真正连续状态转移的 K 步轨迹。
+正常克隆后，`data/train_smiles_only.txt` 应为 1,584,663 行，SHA-256 为 `4301e7f6118839465012eb93510328681ef4b7b24642e8748c4ad40971f4a304`；一键预检也会自动核对。
+
+历史对接使用 AutoDock Vina 1.1.2。其旧版 Windows 二进制不在公共仓库中再分发；运行对接前请自行取得该版本，并设置环境变量 `VINA_EXECUTABLE`，或放到 `tools/autodock_vina_1.1.2/vina.exe`。当前官方 Vina 版本和安装方式见 [AutoDock Vina 官方仓库](https://github.com/ccsb-scripps/AutoDock-Vina)；若改用新版，必须记录版本，且不能将结果表述为与历史1.1.2逐值一致。
+
+## 一键入口
+
+提供两个入口：
+
+- `一键复现.bat`：严格入口。若缺少论文历史使用的 EGFR/VEGFR2 原始行级训练数据，会在预检阶段停止，不会静默替换数据。
+- `一键复现_允许恢复EGFR_VEGFR2数据.bat`：可运行入口。明确接受包内已标注来源的恢复数据，并从头完成其余流程；此结果不得表述为“与历史 EGFR/VEGFR2 训练行逐行相同”。
+
+在 PowerShell 中，与第二个入口等价的命令是：
+
+```powershell
+pwsh ./scripts/reproduce_all.ps1 -Stage All -AllowRecoveredEgfrVegfr2
+```
+
+阶段顺序为：环境 → 预检 → 四个RF预测器 → 共享增强POLYGON VAE → REINVENT4/DrugEx v2/MO-LSO底层模型 → 两靶点六方法十种子正式生成与评价 → V4-B注册消融实验 → 每种子Top10双靶点对接 → 论文Table 2和Table 3。
+
+默认一次最多并行2个正式生成任务；可用 `-MaxParallel 3` 调整。所有阶段按固定输出路径断点续跑。只检查而不执行：
+
+```powershell
+pwsh ./scripts/reproduce_all.ps1 -Stage All -AllowRecoveredEgfrVegfr2 -DryRun
+```
+
+也可单独运行 `-Stage Predictors`、`VAE`、`BottomModels`、`Generation`、`Ablations`、`Docking` 或 `Tables`。
 
 ## 目录
 
-- `method/`：主运行链和论文必要消融；
-- `models/`：唯一锁定 VAE 与两个 RF oracle；
-- `data/`：Novelty 审计使用的规范化训练集缓存；
-- `vendor/polygon-main/`：VAE 与 SA scorer 所需的最小 POLYGON 源码；
-- `evaluation/`：统一 Pareto、质量、可靠性与统计评估；
-- `config/`：正式预算、种子和消融矩阵；
-- `docs/`：SCI Q2 基线实验计划；
-- `logs/`：新实验输出，默认不纳入版本控制。
+| 目录 | 内容 |
+|---|---|
+| `method/` | CLOVER-Mol V4-B源码 |
+| `baselines/*_adapter/` | POLYGON、REINVENT4、DrugEx v2、MO-LSO、GraphPareto–NSGA-II独立源码/适配器 |
+| `vendor/polygon-main/` | 共享VAE的历史训练实现 |
+| `data/` | 共同生成训练集与四靶点预测器数据 |
+| `config/` | 全部机器可读训练/实验参数 |
+| `scripts/` | 一键编排、环境、预测器、VAE、正式生成和表格入口 |
+| `evaluation/`、`analysis/` | 单种子指标、质量约束、统计和主表计算 |
+| `docking/`、`tools/autodock_vina_1.1.2/` | 每种子Top10对接源码、受体和第三方Vina放置说明 |
+| `docs/training_configs/` | 每个方法的完整参数说明 |
+| `reference_results/` | 仅保留的小型论文表和对接汇总参考值 |
 
-## 运行
+不包含已退役基线。正式方法是 CLOVER-Mol 加五个基线：POLYGON（共享增强VAE）、REINVENT4、DrugEx v2、MO-LSO、GraphPareto–NSGA-II。
 
-在 PowerShell 中：
+## 固定协议
 
-```powershell
-Set-Location C:\Users\Lenovo\Documents\自身方法改造
-.\run_method.ps1 -OracleBudget 2048 -Seed 42 -TrajectoryLength 3 -Device cuda
-```
+- 共同生成数据：`data/train_smiles_only.txt`，1,584,663行，SHA-256 `4301e7f6118839465012eb93510328681ef4b7b24642e8748c4ad40971f4a304`。
+- 两组靶点：EGFR/VEGFR2、PARP1/BRD4。
+- 正式种子：42–51；每种子oracle预算10,240。
+- 四个RF：chiral Morgan radius=2、2048 bits；RandomForestRegressor 1000树、max_features=1.0、min_samples_leaf=1、random_state=0。
+- 对接：每个方法×靶点对×种子独立Top10，共1,200个候选、2,400个Vina任务。
+- 统计：先逐种子计算，再报告10种子均值±样本标准差；禁止合并分子池后伪造种子统计。
 
-快速检查参数与依赖：
-
-```powershell
-D:\code\.conda-envs\drug-pareto-rl\python.exe .\method\ablation\run_wc_two_targets_multiexplore.py --help
-```
-
-正式实验按 `config/formal_experiments.json` 使用 10,240 oracle 预算和预注册种子。任何新改造先进行 2,048 预算、3 种子筛选，再进入正式实验。
-
-轨迹消融固定其他设置，仅改变：
-
-```powershell
-.\run_method.ps1 -OracleBudget 2048 -Seed 42 -TrajectoryLength 1 -Device cuda
-.\run_method.ps1 -OracleBudget 2048 -Seed 42 -TrajectoryLength 3 -Device cuda
-.\run_method.ps1 -OracleBudget 2048 -Seed 42 -TrajectoryLength 5 -Device cuda
-```
-
-输出中的 `trajectory_steps`、`path_length`、`net_displacement` 和 `policy_transitions` 用于审计真实状态转移；`generated_rows` 与 `oracle_budget` 应始终相等。
-
-## 未迁移内容
-
-旧 VAE/历史检查点、PCGrad/CAGrad 探索分支、早期三目标 runner、近似基线实现、训练日志、图片、缓存、压缩包、论文构建脚本和重复可视化脚本均未迁移。官方基线应独立适配，避免与自身方法代码混在一起。
+完整训练参数见 [配置索引](docs/training_configs/README.md)，当前不可消除的边界见 [已知限制](docs/KNOWN_LIMITATIONS.md)，数据/代码发布边界见 [可用性说明](docs/DATA_AND_CODE_AVAILABILITY.md)。

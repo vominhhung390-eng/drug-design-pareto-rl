@@ -1,0 +1,27 @@
+{
+  "run_id": "predictor_parp1_brd4_20260804",
+  "api_status": {
+    "activities": 24527044,
+    "chembl_db_version": "ChEMBL_37",
+    "chembl_release_date": "2026-05-01",
+    "compound_records": 3824604,
+    "disinct_compounds": 2921148,
+    "publications": 101100,
+    "status": "UP",
+    "targets": 18552
+  },
+  "targets": {
+    "PARP1": {
+      "target_chembl_id": "CHEMBL3105",
+      "rows": 4335,
+      "path": "not_packaged/raw_downloads/CHEMBL3105_activities.jsonl",
+      "sha256": "43f46bf9252626b8d010002466ab9498b5c605da3c38d5ab90a3cf41478201b4"
+    },
+    "BRD4": {
+      "target_chembl_id": "CHEMBL1163125",
+      "rows": 12828,
+      "path": "not_packaged/raw_downloads/CHEMBL1163125_activities.jsonl",
+      "sha256": "a6b32c7c3bf6337d10a01d7569c07c53e8368f1651f87569ab1de08e094e74b8"
+    }
+  }
+}

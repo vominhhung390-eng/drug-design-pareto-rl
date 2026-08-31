@@ -1,0 +1,106 @@
+{
+  "schema_version": 1,
+  "experiment_id": "v5_balancesync_two_pair_20260806",
+  "method_name": "V5 BalanceSync",
+  "status": "fixed two-target-pair diagnostic after rejecting the threshold-only pilot",
+  "hypothesis": "Synchronizing live three-stage preferences with a hybrid continuous-activity and threshold-deficit elite score improves dual-target balance while preserving V4-B's Pareto signal.",
+  "change_from_v4_b": {
+    "actor_critic": "unchanged; V4-B already standardizes each objective Advantage before preference scalarization",
+    "generator_elite_strategy": "balance_sync",
+    "raw_desirability": "clip((pActivity - 3.0) / (10.0 - 3.0), 0, 1)",
+    "threshold_desirability": "clip((pActivity - 3.0) / (6.5 - 3.0), 0, 1)",
+    "elite_formula": "0.5 * sum_i(w_i * raw_desirability_i) + 0.5 * softmin_tau(threshold_desirability), tau=0.1",
+    "weight_source": "current EMA-smoothed three-stage controller weights at each generator fine-tuning event",
+    "all_other_settings": "identical to V4-B raw-mean"
+  },
+  "development_audit": {
+    "rejected_pilot": "results/own_method_v4c_balancesync_20260806",
+    "rejection_gate": "first four EGFR-VEGFR2 paired seeds showed consistent Dual@6.5 degradation because both elite terms were clipped at 6.5",
+    "naming_note": "V5 is used because V4-C raw-mixed already exists in the historical V4 screen",
+    "comparison_scope": "seeds 42-51 remain a paired retrospective diagnostic; unused-seed confirmation is required before manuscript replacement"
+  },
+  "oracle_budget": 10240,
+  "batch_size": 64,
+  "smoke_budget": 1024,
+  "seeds": [42, 43, 44, 45, 46, 47, 48, 49, 50, 51],
+  "max_concurrent": 2,
+  "common": {
+    "trajectory_length": 1,
+    "trajectory_step_normalization": "sqrt",
+    "controller_variant": "ours_full_corrected",
+    "weight_mode": "dynamic",
+    "critic_mode": "multi",
+    "advantage_normalization": "per_objective_then_scalarized",
+    "channel_mode": "adaptive",
+    "exploration_mode": "multiscale",
+    "actor_mode": "train",
+    "generator_finetune_interval": 16,
+    "generator_finetune_epochs": 2,
+    "generator_finetune_top": 512,
+    "generator_finetune_batch_size": 512,
+    "generator_finetune_lr": 0.0003,
+    "generator_elite_strategy": "balance_sync",
+    "generator_balance_mix": 0.5,
+    "generator_softmin_temperature": 0.1,
+    "archive_seed_fraction": 0.0,
+    "archive_seed_noise": 0.1,
+    "archive_seed_noise_end": 0.05,
+    "archive_seed_start": 0.3,
+    "archive_seed_ramp_end": 0.7,
+    "archive_seed_selection": "uniform",
+    "archive_hvc_weight": 0.7,
+    "archive_balance_weight": 0.3,
+    "archive_selection_temperature": 0.25,
+    "archive_uniform_mix": 0.1,
+    "archive_stagnation_window": 0,
+    "archive_stagnation_delta": 0.002,
+    "archive_stagnation_noise": 0.0,
+    "sample_preference_mode": "shared",
+    "sample_preference_blend": 0.0,
+    "sample_preference_start": 0.3,
+    "sample_preference_ramp_end": 0.7,
+    "pareto_reward_start": 0.3,
+    "pareto_reward_ramp_end": 0.7,
+    "hvc_reward_weight": 0.0,
+    "crowding_reward_weight": 0.0,
+    "balanced_reward_weight": 0.0,
+    "pareto_actor_coef": 0.0
+  },
+  "assets": {
+    "generator": {
+      "path": "models/polygon_vae_best_valid_novel_stable_020.pt",
+      "sha256": "f26bc67c3d6ea47c5756941902a52b8607df170f24528f7df6aa1db59fc504e5"
+    },
+    "method_runner": {
+      "path": "method/ablation/run_wc_two_targets_multiexplore.py",
+      "sha256": "3be5a3a56bf9a0e30c982f6a8d9ce20a12b93a4d4e9c5c18f22197e350de51f9"
+    },
+    "trajectory_agent": {
+      "path": "method/ablation/run_wc_ablation_two_targets.py",
+      "sha256": "adbcec1a83fcf916767b5cc1969464a1dfdc0f873ab474bef0ba0543b9c6b38d"
+    }
+  },
+  "target_pairs": {
+    "egfr_vegfr2": {
+      "targets": ["EGFR", "VEGFR2"],
+      "model_1": "models/oracles/target_EGFR_model.pkl",
+      "model_1_sha256": "d57ba46d71c7a943c3e17a6a6a688d55d48d9cbed93fa1429d95dedb85ae03ab",
+      "model_2": "models/oracles/target_VEGFR2_model.pkl",
+      "model_2_sha256": "c2cfd492cfc0fa367dd8a262f5716b7eea4d1c2de3ff25acccdd96bae9eeeb94",
+      "v4_b_root": "results/own_method_v4/common_seeds_42_51_10240",
+      "polygon_root": "results/baselines/polygon_original",
+      "new_method_root": "results/own_method_v5_balancesync_20260806/egfr_vegfr2"
+    },
+    "parp1_brd4": {
+      "targets": ["PARP1", "BRD4"],
+      "model_1": "models/oracles/parp1_brd4_20260804/target_PARP1_model.pkl",
+      "model_1_sha256": "830b3f18db77b85f89ada69ab74a3bc52d3ebb6f803c76a156312f79ef8893eb",
+      "model_2": "models/oracles/parp1_brd4_20260804/target_BRD4_model.pkl",
+      "model_2_sha256": "cef42e1448929dba7a488aea650b72631c62287fce97d96349039d91d3980f74",
+      "v4_b_root": "results/target_pairs/parp1_brd4_20260804/own_method",
+      "polygon_root": "results/target_pairs/parp1_brd4_20260804/baselines/polygon_original",
+      "new_method_root": "results/own_method_v5_balancesync_20260806/parp1_brd4"
+    }
+  },
+  "result_root": "results/own_method_v5_balancesync_20260806"
+}

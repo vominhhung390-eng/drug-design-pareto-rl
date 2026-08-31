@@ -1,0 +1,87 @@
+{
+  "candidate_selection": "Top-5 quality_pass unique molecules per method across formal seeds 42-51 at 10,240 calls, ranked by min predicted dual-target activity",
+  "targets": {
+    "EGFR": {
+      "pdb_id": "1M17",
+      "ligand": "AQ4",
+      "chain": "A",
+      "source_url": "https://www.rcsb.org/structure/1M17",
+      "protein_pdb": "receptors\\1M17_chainA_protein.pdb",
+      "crystal_ligand_sdf": "receptors\\1M17_AQ4_crystal.sdf",
+      "box_center": [
+        22.014,
+        0.253,
+        52.794
+      ],
+      "box_size": [
+        25.709,
+        22.0,
+        22.0
+      ]
+    },
+    "VEGFR2": {
+      "pdb_id": "4AG8",
+      "ligand": "AXI",
+      "chain": "A",
+      "source_url": "https://www.rcsb.org/structure/4AG8",
+      "protein_pdb": "receptors\\4AG8_chainA_protein.pdb",
+      "crystal_ligand_sdf": "receptors\\4AG8_AXI_crystal.sdf",
+      "box_center": [
+        20.824,
+        25.535,
+        39.46
+      ],
+      "box_size": [
+        23.78,
+        22.0,
+        22.0
+      ]
+    }
+  },
+  "vina": {
+    "exhaustiveness": 32,
+    "num_modes": 9,
+    "energy_range_kcal_mol": 5,
+    "cpu_per_job": 4,
+    "max_parallel_jobs": 4,
+    "fixed_seed_base": 202607260
+  },
+  "redocking_validation": {
+    "EGFR_1M17_AQ4": {
+      "best_affinity_kcal_mol": -7.2,
+      "best_pose_crystal_rmsd_angstrom": 1.4593531514645983,
+      "all_pose_rmsd_angstrom": [
+        1.4593531514645983,
+        5.856331327775919,
+        7.907597209057228,
+        9.498518637679501,
+        7.691237891935526,
+        8.897631678303988,
+        2.7417330977522862,
+        4.870094302705173,
+        6.144740938957197
+      ]
+    },
+    "VEGFR2_4AG8_AXI": {
+      "best_affinity_kcal_mol": -12.5,
+      "best_pose_crystal_rmsd_angstrom": 0.388169743797736,
+      "all_pose_rmsd_angstrom": [
+        0.388169743797736,
+        10.37015257326801,
+        10.942245568046285,
+        11.181507763139228,
+        11.041882254139722,
+        10.22169576370351,
+        5.8993470673819965,
+        11.163480619220614,
+        10.30719993672939
+      ]
+    },
+    "acceptance_rule": "best-pose symmetry-aware no-fit RMSD <= 2.0 Å",
+    "passed": true
+  },
+  "dual_pass_rule": "EGFR Vina <= -7.0 and VEGFR2 Vina <= -7.0 kcal/mol",
+  "beat_controls_rule": "EGFR < -7.2 and VEGFR2 < -12.5 kcal/mol (strictly better than both redocked co-crystal controls)",
+  "plausible_pose_rule": "both targets: >=5 protein residues within 4 A, target hinge contact within 4 A, no heavy-atom distance <1.2 A, ligand centroid inside docking box",
+  "confidence_interval": "nonparametric bootstrap 95% CI of the median, 10,000 resamples, n=5 compounds/method"
+}

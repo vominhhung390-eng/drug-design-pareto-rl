@@ -1,0 +1,27 @@
+{
+  "seeds": [
+    42,
+    43,
+    44,
+    45,
+    46,
+    47,
+    48,
+    49,
+    50,
+    51
+  ],
+  "budget_per_seed": 10240,
+  "methods": [
+    "CLOVER-Mol",
+    "POLYGON",
+    "REINVENT4",
+    "DrugEx v2",
+    "MO-LSO",
+    "GraphPareto-NSGA-II"
+  ],
+  "replication_unit": "formal seed; never pooled before metric calculation",
+  "polygon_identity": "POLYGON adapter using the shared augmented-data VAE initialization",
+  "igd_reference": "pooled nondominated front within each target pair across all six methods and ten seeds",
+  "quality_gate": "QED>=0.60; SA<=4.0; no PAINS/Brenk alert; Lipinski pass"
+}

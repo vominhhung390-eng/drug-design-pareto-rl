@@ -1,0 +1,42 @@
+{
+  "selected_version": "V4-B raw-mean",
+  "status": "formal; prospective paired confirmation passed",
+  "runner": "method/ablation/run_wc_two_targets_multiexplore.py",
+  "formal_config": "config/v4_raw_mean_confirmation_10240.json",
+  "confirmation_report": "results/own_method_v4/confirmation_10240/confirmation_summary.md",
+  "core_change_from_v1": "Retain the trained PPO actor and update the Polygon VAE every 1024 oracle calls using the top 512 real valid molecules ranked by mean EGFR/VEGFR2 activity normalized on the pre-registered 3.0-10.0 HV range.",
+  "locked_parameters": {
+    "actor_mode": "train",
+    "generator_finetune_interval": 16,
+    "generator_finetune_epochs": 2,
+    "generator_finetune_top": 512,
+    "generator_finetune_batch_size": 512,
+    "generator_finetune_lr": 0.0003,
+    "generator_elite_strategy": "raw_mean"
+  },
+  "confirmation": {
+    "seeds": [82, 83, 84, 85, 86, 87, 88, 89, 90, 91],
+    "oracle_budget": 10240,
+    "own_hv_mean": 0.5330847857572312,
+    "polygon_hv_mean": 0.4981064352598011,
+    "paired_hv_gain": 0.0349783504974301,
+    "wins": 10,
+    "paired_t_p": 0.0005783155119311787,
+    "own_quality_hv_mean": 0.5298332176632307,
+    "polygon_quality_hv_mean": 0.4935626157276670
+  },
+  "common_seed_comparison": {
+    "status": "post-selection descriptive comparison with frozen V4 parameters",
+    "config": "config/v4_raw_mean_common_seeds_42_51_10240.json",
+    "report": "results/own_method_v4/common_seeds_42_51_10240/common_seed_summary.md",
+    "seeds": [42, 43, 44, 45, 46, 47, 48, 49, 50, 51],
+    "oracle_budget": 10240,
+    "own_hv_mean": 0.5179989449543038,
+    "polygon_hv_mean": 0.4908915687993562,
+    "paired_hv_gain": 0.0271073761549475,
+    "wins": 9,
+    "paired_t_p": 0.007711863709500248,
+    "own_quality_hv_mean": 0.5112104242004942,
+    "polygon_quality_hv_mean": 0.4846850215957933
+  }
+}

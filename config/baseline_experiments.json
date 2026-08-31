@@ -1,0 +1,80 @@
+{
+  "protocol_version": 2,
+  "protocol_name": "SCI_Q2_five_de_novo_baselines_graphpareto_replacement",
+  "dataset": {
+    "path": "data/train_smiles_only.txt",
+    "sha256": "4301e7f6118839465012eb93510328681ef4b7b24642e8748c4ad40971f4a304",
+    "line_count": 1584663,
+    "empty_line_count": 0,
+    "duplicate_count": 0,
+    "role": "the only source dataset for all five baselines",
+    "native_representation_filtering_allowed": true
+  },
+  "oracles": {
+    "egfr": "models/oracles/target_EGFR_model.pkl",
+    "vegfr2": "models/oracles/target_VEGFR2_model.pkl",
+    "fingerprint": {
+      "type": "MorganBitVect",
+      "radius": 2,
+      "n_bits": 2048,
+      "use_chirality": true
+    },
+    "optimization_direction": "maximize_both",
+    "reward_view": {
+      "type": "linear_clipped_desirability",
+      "lower_pactivity": 3.0,
+      "upper_pactivity": 6.5,
+      "invalid_value": 0.0,
+      "note": "Raw oracle outputs remain unchanged in result CSV files; this common [0,1] view is used only where an optimizer requires bounded rewards. Pareto methods retain both objective columns."
+    }
+  },
+  "evaluation": {
+    "required_output_columns": ["smiles", "egfr", "vegfr2"],
+    "anytime_oracle_checkpoints": [1024, 2048, 5120, 10240],
+    "formal_oracle_budget": 10240,
+    "smoke_budgets": [128, 512],
+    "formal_seeds": [42, 43, 44, 45, 46, 47, 48, 49, 50, 51]
+  },
+  "resources": {
+    "gpu_training_slots": 1,
+    "gpu_index": 0,
+    "gpu_memory_soft_limit_gib": 22,
+    "cpu_workers": 24,
+    "logical_cpu_count": 32,
+    "cpu_worker_fraction": 0.75,
+    "max_concurrent_cpu_preprocessors": 2
+  },
+  "baselines": {
+    "polygon_original": {
+      "source_dir": "baselines/polygon_adapter",
+      "source_revision": "426f0b7e31f5ed4d6ed49f1baf3f6c026485f59d",
+      "training": "train_shared_augmented_vae_from_parameters_then_reuse_same_checkpoint_as_clover_mol",
+      "checkpoint": "models/polygon_vae_best_valid_novel_stable_020.pt"
+    },
+    "reinvent4": {
+      "source_dir": "baselines/reinvent4_adapter",
+      "source_revision": "REINVENT4-main archive; archive hash recorded during environment setup",
+      "training": "from_random_initialization",
+      "pretrained_model_allowed": false
+    },
+    "drugex_v2": {
+      "source_dir": "baselines/drugex_v2_adapter",
+      "source_revision": "abcc5091bd526c639ac3a0b6128963537652fb0b",
+      "training": "from_random_initialization",
+      "pretrained_model_allowed": false
+    },
+    "mo_lso": {
+      "source_dir": "baselines/mo_lso_adapter",
+      "source_revision": "GMD-MO-LSO v1.0.0",
+      "training": "from_random_initialization",
+      "pretrained_model_allowed": false
+    },
+    "graphpareto_nsga2": {
+      "source_dir": "baselines/graphpareto_nsga2_adapter",
+      "source_revision": "826e533b1b3995a8944e7c5cefe087806ff8c03f",
+      "training": "not_applicable_direct_evolutionary_search",
+      "pretrained_model_allowed": false,
+      "objective_handling": "native two-objective Pareto optimization"
+    }
+  }
+}

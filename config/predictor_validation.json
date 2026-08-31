@@ -1,0 +1,31 @@
+{
+  "data_source": "bindingdb_rest_snapshot",
+  "bindingdb_api_base": "https://bindingdb.org/rest/getLigandsByUniprots",
+  "pubmed_esummary_url": "https://eutils.ncbi.nlm.nih.gov/entrez/eutils/esummary.fcgi",
+  "targets": {
+    "EGFR": {
+      "chembl_id": "CHEMBL203",
+      "uniprot_id": "P00533",
+      "bindingdb_snapshot": "data/external/bindingdb/P00533_EGFR_ligands_20260729.json",
+      "model": "models/oracles/target_EGFR_model.pkl"
+    },
+    "VEGFR2": {
+      "chembl_id": "CHEMBL279",
+      "uniprot_id": "P35968",
+      "bindingdb_snapshot": "data/external/bindingdb/P35968_VEGFR2_ligands_20260729.json",
+      "model": "models/oracles/target_VEGFR2_model.pkl"
+    }
+  },
+  "allowed_activity_types": ["IC50", "Kd"],
+  "allowed_assay_types": ["B"],
+  "reference_end_year": 2023,
+  "post_publication_start_year": 2024,
+  "strict_recent_start_year": 2025,
+  "activity_thresholds": [6.0, 6.5],
+  "random_seed": 42,
+  "scaffold_test_fraction": 0.2,
+  "reference_rf_estimators": 1000,
+  "conformal_coverage": 0.9,
+  "request_timeout_seconds": 180,
+  "request_retries": 6
+}

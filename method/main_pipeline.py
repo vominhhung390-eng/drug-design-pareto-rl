@@ -287,11 +287,11 @@ class VAE_Decoder:
         # 最简单的方法: 尝试按 Polygon 方式加载，失败则回退到 Legacy
         try:
             self._load_polygon_model(model_path)
-            print(f"  ✓ 检测到 Polygon VAE 模型")
+            print("  [OK] 检测到 Polygon VAE 模型")
         except Exception as e:
             print(f"  [Polygon 加载失败: {e}]，尝试 Legacy 模式...")
             self._load_legacy_model(model_path, vocab_path)
-            print(f"  ✓ 使用 Legacy VAEModel")
+            print("  [OK] 使用 Legacy VAEModel")
 
     def _decode_polygon(self, z: torch.Tensor, greedy: bool = False,
                         temperature: float = 0.7) -> list:
@@ -345,6 +345,28 @@ class VAE_Decoder:
             return self._decode_polygon(z, greedy=greedy, temperature=temperature)
         else:
             return self._decode_legacy(z, greedy=greedy, temperature=temperature)
+
+    def encode_batch(self, smiles_list: list) -> np.ndarray:
+        """Encode real SMILES to posterior means while preserving input order.
+
+        Polygon's encoder packs variable-length tensors and therefore requires
+        them in decreasing token length.  Sorting and inverse permutation are
+        handled here so callers can safely align encoded latents with scores.
+        """
+        if self._model_type != 'polygon':
+            raise NotImplementedError("SMILES re-encoding is currently supported only for Polygon VAE")
+        if not smiles_list:
+            return np.empty((0, self.latent_dim), dtype=np.float32)
+        tensors = [self.model.string2tensor(str(smiles), device=self.device)
+                   for smiles in smiles_list]
+        order = sorted(range(len(tensors)), key=lambda index: len(tensors[index]), reverse=True)
+        sorted_tensors = [tensors[index] for index in order]
+        with torch.no_grad():
+            sorted_mu = self.model.encode(sorted_tensors).detach().cpu().numpy().astype(np.float32)
+        encoded = np.empty_like(sorted_mu)
+        for sorted_index, original_index in enumerate(order):
+            encoded[original_index] = sorted_mu[sorted_index]
+        return encoded
 
     def _check_smiles_validity(self, smiles: str) -> bool:
         """快速SMILES有效性检查 (带缓存)"""
@@ -555,7 +577,7 @@ class MO_RL_Integrator:
         # VAE 加载后自动适配实际隐空间维度（兼容 128/512/自定义维度）
         actual_latent_dim = self.vae.latent_dim
         self.latent_dim = actual_latent_dim
-        print(f"  ✓ MO-RL 隐空间维度适配: PPO网络输入={actual_latent_dim}")
+        print(f"  [OK] MO-RL 隐空间维度适配: PPO网络输入={actual_latent_dim}")
         self.objective_calculator = ObjectiveCalculator(
             egfr_model_path=egfr_model_path,
             vegfr2_model_path=vegfr2_model_path
@@ -947,7 +969,7 @@ class MO_RL_Integrator:
                 title=f"Pareto Front 2D Pairs (Final)",
                 save_dir=str(log_dir)
             )
-            print(f"  ✓ 可视化图表已保存到 logs/ 目录")
+            print("  [OK] 可视化图表已保存到 logs/ 目录")
 
         # ---- 生成训练趋势折线图 (三个性质均值 + 超体积) ----
         self._plot_training_trend(log_dir)

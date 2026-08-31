@@ -1,0 +1,592 @@
+{
+  "selection_rule": "per-seed Top-10 among quality_pass molecules after largest-fragment canonical SMILES; duplicates removed within each seed but retained across seeds; ranked by min target activity, mean target activity, QED descending, SA ascending",
+  "seed_ids": [
+    42,
+    43,
+    44,
+    45,
+    46,
+    47,
+    48,
+    49,
+    50,
+    51
+  ],
+  "methods": [
+    "CLOVER-Mol",
+    "POLYGON",
+    "REINVENT4",
+    "DrugEx v2",
+    "MO-LSO",
+    "GraphPareto-NSGA-II"
+  ],
+  "top_k_per_seed": 10,
+  "selected_total": 1200,
+  "rows_per_pair_method": 100,
+  "pairs": [
+    {
+      "method": "CLOVER-Mol",
+      "pair": "pairA",
+      "seeds": {
+        "42": {
+          "quality_pass_rows_available": 6929,
+          "selected": 10
+        },
+        "43": {
+          "quality_pass_rows_available": 7194,
+          "selected": 10
+        },
+        "44": {
+          "quality_pass_rows_available": 7131,
+          "selected": 10
+        },
+        "45": {
+          "quality_pass_rows_available": 6786,
+          "selected": 10
+        },
+        "46": {
+          "quality_pass_rows_available": 6769,
+          "selected": 10
+        },
+        "47": {
+          "quality_pass_rows_available": 7273,
+          "selected": 10
+        },
+        "48": {
+          "quality_pass_rows_available": 7133,
+          "selected": 10
+        },
+        "49": {
+          "quality_pass_rows_available": 6901,
+          "selected": 10
+        },
+        "50": {
+          "quality_pass_rows_available": 6703,
+          "selected": 10
+        },
+        "51": {
+          "quality_pass_rows_available": 6741,
+          "selected": 10
+        }
+      },
+      "selected": 100
+    },
+    {
+      "method": "POLYGON",
+      "pair": "pairA",
+      "seeds": {
+        "42": {
+          "quality_pass_rows_available": 6811,
+          "selected": 10
+        },
+        "43": {
+          "quality_pass_rows_available": 7230,
+          "selected": 10
+        },
+        "44": {
+          "quality_pass_rows_available": 7219,
+          "selected": 10
+        },
+        "45": {
+          "quality_pass_rows_available": 7494,
+          "selected": 10
+        },
+        "46": {
+          "quality_pass_rows_available": 7372,
+          "selected": 10
+        },
+        "47": {
+          "quality_pass_rows_available": 7196,
+          "selected": 10
+        },
+        "48": {
+          "quality_pass_rows_available": 7335,
+          "selected": 10
+        },
+        "49": {
+          "quality_pass_rows_available": 7256,
+          "selected": 10
+        },
+        "50": {
+          "quality_pass_rows_available": 7481,
+          "selected": 10
+        },
+        "51": {
+          "quality_pass_rows_available": 7405,
+          "selected": 10
+        }
+      },
+      "selected": 100
+    },
+    {
+      "method": "REINVENT4",
+      "pair": "pairA",
+      "seeds": {
+        "42": {
+          "quality_pass_rows_available": 4257,
+          "selected": 10
+        },
+        "43": {
+          "quality_pass_rows_available": 5542,
+          "selected": 10
+        },
+        "44": {
+          "quality_pass_rows_available": 6724,
+          "selected": 10
+        },
+        "45": {
+          "quality_pass_rows_available": 3865,
+          "selected": 10
+        },
+        "46": {
+          "quality_pass_rows_available": 4884,
+          "selected": 10
+        },
+        "47": {
+          "quality_pass_rows_available": 3521,
+          "selected": 10
+        },
+        "48": {
+          "quality_pass_rows_available": 3965,
+          "selected": 10
+        },
+        "49": {
+          "quality_pass_rows_available": 3421,
+          "selected": 10
+        },
+        "50": {
+          "quality_pass_rows_available": 5149,
+          "selected": 10
+        },
+        "51": {
+          "quality_pass_rows_available": 4021,
+          "selected": 10
+        }
+      },
+      "selected": 100
+    },
+    {
+      "method": "DrugEx v2",
+      "pair": "pairA",
+      "seeds": {
+        "42": {
+          "quality_pass_rows_available": 8139,
+          "selected": 10
+        },
+        "43": {
+          "quality_pass_rows_available": 8143,
+          "selected": 10
+        },
+        "44": {
+          "quality_pass_rows_available": 8001,
+          "selected": 10
+        },
+        "45": {
+          "quality_pass_rows_available": 8169,
+          "selected": 10
+        },
+        "46": {
+          "quality_pass_rows_available": 8146,
+          "selected": 10
+        },
+        "47": {
+          "quality_pass_rows_available": 8211,
+          "selected": 10
+        },
+        "48": {
+          "quality_pass_rows_available": 8191,
+          "selected": 10
+        },
+        "49": {
+          "quality_pass_rows_available": 8167,
+          "selected": 10
+        },
+        "50": {
+          "quality_pass_rows_available": 8192,
+          "selected": 10
+        },
+        "51": {
+          "quality_pass_rows_available": 8176,
+          "selected": 10
+        }
+      },
+      "selected": 100
+    },
+    {
+      "method": "MO-LSO",
+      "pair": "pairA",
+      "seeds": {
+        "42": {
+          "quality_pass_rows_available": 2110,
+          "selected": 10
+        },
+        "43": {
+          "quality_pass_rows_available": 2622,
+          "selected": 10
+        },
+        "44": {
+          "quality_pass_rows_available": 2102,
+          "selected": 10
+        },
+        "45": {
+          "quality_pass_rows_available": 2311,
+          "selected": 10
+        },
+        "46": {
+          "quality_pass_rows_available": 2049,
+          "selected": 10
+        },
+        "47": {
+          "quality_pass_rows_available": 1854,
+          "selected": 10
+        },
+        "48": {
+          "quality_pass_rows_available": 1960,
+          "selected": 10
+        },
+        "49": {
+          "quality_pass_rows_available": 2032,
+          "selected": 10
+        },
+        "50": {
+          "quality_pass_rows_available": 1943,
+          "selected": 10
+        },
+        "51": {
+          "quality_pass_rows_available": 2598,
+          "selected": 10
+        }
+      },
+      "selected": 100
+    },
+    {
+      "method": "GraphPareto-NSGA-II",
+      "pair": "pairA",
+      "seeds": {
+        "42": {
+          "quality_pass_rows_available": 655,
+          "selected": 10
+        },
+        "43": {
+          "quality_pass_rows_available": 904,
+          "selected": 10
+        },
+        "44": {
+          "quality_pass_rows_available": 653,
+          "selected": 10
+        },
+        "45": {
+          "quality_pass_rows_available": 809,
+          "selected": 10
+        },
+        "46": {
+          "quality_pass_rows_available": 1326,
+          "selected": 10
+        },
+        "47": {
+          "quality_pass_rows_available": 1064,
+          "selected": 10
+        },
+        "48": {
+          "quality_pass_rows_available": 1213,
+          "selected": 10
+        },
+        "49": {
+          "quality_pass_rows_available": 1350,
+          "selected": 10
+        },
+        "50": {
+          "quality_pass_rows_available": 1010,
+          "selected": 10
+        },
+        "51": {
+          "quality_pass_rows_available": 938,
+          "selected": 10
+        }
+      },
+      "selected": 100
+    },
+    {
+      "method": "CLOVER-Mol",
+      "pair": "pairB",
+      "seeds": {
+        "42": {
+          "quality_pass_rows_available": 7003,
+          "selected": 10
+        },
+        "43": {
+          "quality_pass_rows_available": 7222,
+          "selected": 10
+        },
+        "44": {
+          "quality_pass_rows_available": 6940,
+          "selected": 10
+        },
+        "45": {
+          "quality_pass_rows_available": 7066,
+          "selected": 10
+        },
+        "46": {
+          "quality_pass_rows_available": 7001,
+          "selected": 10
+        },
+        "47": {
+          "quality_pass_rows_available": 7399,
+          "selected": 10
+        },
+        "48": {
+          "quality_pass_rows_available": 6975,
+          "selected": 10
+        },
+        "49": {
+          "quality_pass_rows_available": 6412,
+          "selected": 10
+        },
+        "50": {
+          "quality_pass_rows_available": 7156,
+          "selected": 10
+        },
+        "51": {
+          "quality_pass_rows_available": 7073,
+          "selected": 10
+        }
+      },
+      "selected": 100
+    },
+    {
+      "method": "POLYGON",
+      "pair": "pairB",
+      "seeds": {
+        "42": {
+          "quality_pass_rows_available": 6961,
+          "selected": 10
+        },
+        "43": {
+          "quality_pass_rows_available": 7063,
+          "selected": 10
+        },
+        "44": {
+          "quality_pass_rows_available": 6840,
+          "selected": 10
+        },
+        "45": {
+          "quality_pass_rows_available": 6990,
+          "selected": 10
+        },
+        "46": {
+          "quality_pass_rows_available": 6904,
+          "selected": 10
+        },
+        "47": {
+          "quality_pass_rows_available": 6643,
+          "selected": 10
+        },
+        "48": {
+          "quality_pass_rows_available": 7129,
+          "selected": 10
+        },
+        "49": {
+          "quality_pass_rows_available": 6908,
+          "selected": 10
+        },
+        "50": {
+          "quality_pass_rows_available": 7183,
+          "selected": 10
+        },
+        "51": {
+          "quality_pass_rows_available": 7006,
+          "selected": 10
+        }
+      },
+      "selected": 100
+    },
+    {
+      "method": "REINVENT4",
+      "pair": "pairB",
+      "seeds": {
+        "42": {
+          "quality_pass_rows_available": 5983,
+          "selected": 10
+        },
+        "43": {
+          "quality_pass_rows_available": 6748,
+          "selected": 10
+        },
+        "44": {
+          "quality_pass_rows_available": 6446,
+          "selected": 10
+        },
+        "45": {
+          "quality_pass_rows_available": 5988,
+          "selected": 10
+        },
+        "46": {
+          "quality_pass_rows_available": 6218,
+          "selected": 10
+        },
+        "47": {
+          "quality_pass_rows_available": 5415,
+          "selected": 10
+        },
+        "48": {
+          "quality_pass_rows_available": 7340,
+          "selected": 10
+        },
+        "49": {
+          "quality_pass_rows_available": 7662,
+          "selected": 10
+        },
+        "50": {
+          "quality_pass_rows_available": 5230,
+          "selected": 10
+        },
+        "51": {
+          "quality_pass_rows_available": 7208,
+          "selected": 10
+        }
+      },
+      "selected": 100
+    },
+    {
+      "method": "DrugEx v2",
+      "pair": "pairB",
+      "seeds": {
+        "42": {
+          "quality_pass_rows_available": 8203,
+          "selected": 10
+        },
+        "43": {
+          "quality_pass_rows_available": 8133,
+          "selected": 10
+        },
+        "44": {
+          "quality_pass_rows_available": 8192,
+          "selected": 10
+        },
+        "45": {
+          "quality_pass_rows_available": 8015,
+          "selected": 10
+        },
+        "46": {
+          "quality_pass_rows_available": 8150,
+          "selected": 10
+        },
+        "47": {
+          "quality_pass_rows_available": 8136,
+          "selected": 10
+        },
+        "48": {
+          "quality_pass_rows_available": 8035,
+          "selected": 10
+        },
+        "49": {
+          "quality_pass_rows_available": 8211,
+          "selected": 10
+        },
+        "50": {
+          "quality_pass_rows_available": 7984,
+          "selected": 10
+        },
+        "51": {
+          "quality_pass_rows_available": 8027,
+          "selected": 10
+        }
+      },
+      "selected": 100
+    },
+    {
+      "method": "MO-LSO",
+      "pair": "pairB",
+      "seeds": {
+        "42": {
+          "quality_pass_rows_available": 2165,
+          "selected": 10
+        },
+        "43": {
+          "quality_pass_rows_available": 1901,
+          "selected": 10
+        },
+        "44": {
+          "quality_pass_rows_available": 2010,
+          "selected": 10
+        },
+        "45": {
+          "quality_pass_rows_available": 1782,
+          "selected": 10
+        },
+        "46": {
+          "quality_pass_rows_available": 2192,
+          "selected": 10
+        },
+        "47": {
+          "quality_pass_rows_available": 2062,
+          "selected": 10
+        },
+        "48": {
+          "quality_pass_rows_available": 2155,
+          "selected": 10
+        },
+        "49": {
+          "quality_pass_rows_available": 2040,
+          "selected": 10
+        },
+        "50": {
+          "quality_pass_rows_available": 1859,
+          "selected": 10
+        },
+        "51": {
+          "quality_pass_rows_available": 2099,
+          "selected": 10
+        }
+      },
+      "selected": 100
+    },
+    {
+      "method": "GraphPareto-NSGA-II",
+      "pair": "pairB",
+      "seeds": {
+        "42": {
+          "quality_pass_rows_available": 1008,
+          "selected": 10
+        },
+        "43": {
+          "quality_pass_rows_available": 1392,
+          "selected": 10
+        },
+        "44": {
+          "quality_pass_rows_available": 961,
+          "selected": 10
+        },
+        "45": {
+          "quality_pass_rows_available": 879,
+          "selected": 10
+        },
+        "46": {
+          "quality_pass_rows_available": 1503,
+          "selected": 10
+        },
+        "47": {
+          "quality_pass_rows_available": 1010,
+          "selected": 10
+        },
+        "48": {
+          "quality_pass_rows_available": 1435,
+          "selected": 10
+        },
+        "49": {
+          "quality_pass_rows_available": 1645,
+          "selected": 10
+        },
+        "50": {
+          "quality_pass_rows_available": 1404,
+          "selected": 10
+        },
+        "51": {
+          "quality_pass_rows_available": 991,
+          "selected": 10
+        }
+      },
+      "selected": 100
+    }
+  ]
+}

@@ -1,0 +1,67 @@
+# REINVENT4 TOML input example for enumeration
+#
+
+run_type = "enumeration"
+json_out_config = "_enumeration.json"  # write this TOML to JSON
+
+[parameters]
+batch_size = 10 # number of molecules to process in a batch
+smiles_file = "peptide.smi"  # SMILES file with 1 molecule per line
+amino_acid_library = "library.csv"  # CSV file with amino acid definitions
+amino_acid_name_column = "Name"
+smiles_column = "Smiles"
+output_csv = "peptide_enumeration.csv"  # name of output CSV to write, optional
+
+
+[scoring]
+
+type = "geometric_mean"  # or arithmetic_mean
+parallel = false  # do not run scoring components in parallel
+
+[[scoring.component]]
+# Custom alerts if a filter of unwanted groups
+[scoring.component.custom_alerts]
+
+[[scoring.component.custom_alerts.endpoint]]
+name = "Alerts"  # user chosen name for output
+# no weight because as a filter it will be applied globally
+
+params.smarts = [
+    "[*;r8]",
+    "[*;r9]",
+    "[*;r10]",
+    "[*;r11]",
+    "[*;r12]",
+    "[*;r13]",
+    "[*;r14]",
+    "[*;r15]",
+    "[*;r16]",
+    "[*;r17]",
+    "[#8][#8]",
+    "[#6;+]",
+    "[#16][#16]",
+    "[#7;!n][S;!$(S(=O)=O)]",
+    "[#7;!n][#7;!n]",
+    "C#C",
+    "C(=[O,S])[O,S]",
+    "[#7;!n][C;!$(C(=[O,N])[N,O])][#16;!s]",
+    "[#7;!n][C;!$(C(=[O,N])[N,O])][#7;!n]",
+    "[#7;!n][C;!$(C(=[O,N])[N,O])][#8;!o]",
+    "[#8;!o][C;!$(C(=[O,N])[N,O])][#16;!s]",
+    "[#8;!o][C;!$(C(=[O,N])[N,O])][#8;!o]",
+    "[#16;!s][C;!$(C(=[O,N])[N,O])][#16;!s]"
+]
+
+[[scoring.component]]
+[scoring.component.MolecularWeight]
+
+[[scoring.component.MolecularWeight.endpoint]]
+name = "MW"
+weight = 1
+
+# transforms can be used for any component if desired
+transform.type = "sigmoid"
+transform.high = 500
+transform.low = 300
+transform.k = 0.5
+

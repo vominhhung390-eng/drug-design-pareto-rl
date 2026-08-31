@@ -1,0 +1,63 @@
+{
+  "schema_version": 2,
+  "package_root": ".",
+  "generated_at": "2026-08-31T16:47:27.9197475+08:00",
+  "release_profile": "lean source-data-config package; trained weights and bulky runs intentionally excluded",
+  "package_size_bytes": 104122124.0,
+  "shared_dataset": {
+    "line_count": 1584663,
+    "sha256": "4301e7f6118839465012eb93510328681ef4b7b24642e8748c4ad40971f4a304",
+    "verified": true
+  },
+  "methods": [
+    "CLOVER-Mol",
+    "POLYGON shared augmented VAE",
+    "REINVENT4",
+    "DrugEx v2",
+    "MO-LSO",
+    "GraphPareto-NSGA-II"
+  ],
+  "formal_protocol": {
+    "target_pairs": 2,
+    "methods": 6,
+    "seeds_per_cell": 10,
+    "formal_runs": 120,
+    "oracle_budget_per_seed": 10240
+  },
+  "training_configuration": {
+    "method_documents": 11,
+    "machine_readable_pipeline": true,
+    "one_click_entrypoint": true
+  },
+  "predictor_data": {
+    "parp1_brd4_formal_tables_present": true,
+    "egfr_vegfr2_exact_historical_rows_present": false,
+    "egfr_vegfr2_recovered_snapshots_present": true,
+    "explicit_opt_in_required": true
+  },
+  "polygon_identity": "POLYGON adapter using the shared canonical+3 randomized-SMILES VAE; not strict no-augmentation original",
+  "docking_reference": {
+    "compound_rows": 1200,
+    "raw_tasks": 2400,
+    "successful_tasks": 2400,
+    "expected_compounds": 1200,
+    "expected_tasks": 2400
+  },
+  "third_party_runtime": {
+    "historical_vina_version": "1.1.2",
+    "vina_binary_bundled": false,
+    "supply_via": "VINA_EXECUTABLE or tools/autodock_vina_1.1.2/vina.exe"
+  },
+  "compact_reference_tables_present": [
+    true,
+    true
+  ],
+  "unexpected_packaged_weights": [],
+  "excluded_method_named_paths": [],
+  "known_blockers": [
+    "Exact historical EGFR/VEGFR2 training rows are unavailable; recovered BindingDB data requires explicit opt-in.",
+    "POLYGON must be reported as using the shared augmented VAE, not as strict no-augmentation original.",
+    "The historical AutoDock Vina 1.1.2 executable is a user-supplied third-party runtime and is not redistributed.",
+    "CLOVER-Mol top-level LICENSE and CITATION.cff require author choice and metadata before public release."
+  ]
+}

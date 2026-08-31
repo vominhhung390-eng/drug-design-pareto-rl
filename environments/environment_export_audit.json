@@ -1,0 +1,58 @@
+[
+  {
+    "Environment": "clover_mol",
+    "Captured": true,
+    "Python": "3.10.20",
+    "Packages": 51,
+    "RebuildSource": "environments/requirements_snapshot_clover_mol.txt"
+  },
+  {
+    "Environment": "polygon",
+    "Captured": true,
+    "Python": "3.10.20",
+    "Packages": 51,
+    "RebuildSource": "environments/requirements_snapshot_polygon.txt"
+  },
+  {
+    "Environment": "drugex_v2",
+    "Captured": true,
+    "Python": "3.10.20",
+    "Packages": 51,
+    "RebuildSource": "environments/requirements_snapshot_drugex_v2.txt"
+  },
+  {
+    "Environment": "mo_lso_torch",
+    "Captured": true,
+    "Python": "3.10.20",
+    "Packages": 64,
+    "RebuildSource": "environments/requirements_snapshot_mo_lso_torch.txt"
+  },
+  {
+    "Environment": "mo_lso_gpflow",
+    "Captured": true,
+    "Python": "3.10.20",
+    "Packages": 62,
+    "RebuildSource": "environments/requirements_snapshot_mo_lso_gpflow.txt"
+  },
+  {
+    "Environment": "graphpareto_nsga2",
+    "Captured": true,
+    "Python": "3.10.20",
+    "Packages": 54,
+    "RebuildSource": "environments/requirements_snapshot_graphpareto_nsga2.txt"
+  },
+  {
+    "Environment": "docking",
+    "Captured": true,
+    "Python": "3.10.20",
+    "Packages": 13,
+    "RebuildSource": "environments/requirements_snapshot_docking.txt"
+  },
+  {
+    "Environment": "reinvent4",
+    "Captured": true,
+    "Python": "3.11.15",
+    "Packages": 139,
+    "RebuildSource": "baselines/reinvent4_adapter/pyproject.toml + uv.lock"
+  }
+]

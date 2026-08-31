@@ -1,0 +1,63 @@
+{
+  "experiment_id": "v4_b_p0_actor_vae_factorial_completion_10240",
+  "status": "post hoc mechanistic completion specified before running the missing factorial cell; exploratory interaction analysis",
+  "specified_at": "2026-08-22T23:30:00+08:00",
+  "source_ablation_config": "config/v4_formal_ablation_10240.json",
+  "selected_method": "config/selected_own_method.json",
+  "oracle_budget": 10240,
+  "batch_size": 64,
+  "seeds": [92, 93, 94, 95, 96, 97, 98, 99, 100, 101],
+  "recommended_max_concurrent": 4,
+  "primary_endpoint": "normalized activity hypervolume at 10240 oracle calls",
+  "key_secondary_endpoint": "quality-constrained hypervolume at 10240 oracle calls",
+  "analysis": "Complete the actor-update by online-VAE-adaptation 2x2 factorial using paired seeds. The interaction is exploratory because the cell was specified after the original single-factor results were available.",
+  "common": {
+    "archive_seed_start": 0.30,
+    "archive_seed_ramp_end": 0.70,
+    "archive_seed_noise": 0.10,
+    "archive_seed_noise_end": 0.05,
+    "pareto_reward_start": 0.30,
+    "pareto_reward_ramp_end": 0.70,
+    "trajectory_length": 1,
+    "controller_variant": "ours_full_corrected"
+  },
+  "base_variant": {
+    "actor_mode": "train",
+    "generator_finetune_interval": 16,
+    "generator_finetune_epochs": 2,
+    "generator_finetune_top": 512,
+    "generator_finetune_batch_size": 512,
+    "generator_finetune_lr": 0.0003,
+    "generator_elite_strategy": "raw_mean",
+    "weight_mode": "dynamic",
+    "critic_mode": "multi",
+    "channel_mode": "adaptive",
+    "exploration_mode": "multiscale",
+    "archive_seed_fraction": 0.0,
+    "archive_seed_selection": "uniform",
+    "archive_hvc_weight": 0.7,
+    "archive_balance_weight": 0.3,
+    "archive_selection_temperature": 0.25,
+    "archive_uniform_mix": 0.10,
+    "archive_stagnation_window": 0,
+    "archive_stagnation_delta": 0.002,
+    "archive_stagnation_noise": 0.0,
+    "hvc_reward_weight": 0.0,
+    "crowding_reward_weight": 0.0,
+    "balanced_reward_weight": 0.0,
+    "pareto_actor_coef": 0.0,
+    "sample_preference_mode": "shared",
+    "sample_preference_blend": 0.0,
+    "sample_preference_start": 0.30,
+    "sample_preference_ramp_end": 0.70
+  },
+  "variants": {
+    "a9_frozen_actor_no_online_vae": {
+      "label": "Frozen actor plus no online VAE",
+      "purpose": "Complete the actor-update by online-VAE-adaptation 2x2 factorial",
+      "actor_mode": "frozen",
+      "generator_finetune_interval": 0,
+      "generator_finetune_epochs": 0
+    }
+  }
+}

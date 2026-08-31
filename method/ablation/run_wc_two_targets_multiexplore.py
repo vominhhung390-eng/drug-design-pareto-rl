@@ -13,6 +13,9 @@ from __future__ import annotations
 
 import argparse
 import csv
+import hashlib
+import json
+import random
 import sys
 import time
 from dataclasses import dataclass
@@ -41,6 +44,9 @@ if hasattr(sys.stderr, "reconfigure"):
 from finaly import Molecule, ParetoFront  # noqa: E402
 from main_pipeline import MO_RL_Integrator  # noqa: E402
 from ablation.run_wc_ablation_two_targets import (  # noqa: E402
+    ACTIVITY_LOWER,
+    ACTIVITY_UPPER,
+    RAW_REF_POINT,
     TrajectoryMultiCriticPPOAgent,
     TwoTargetObjectiveCalculator,
     hypervolume_2d,
@@ -61,12 +67,16 @@ try:
     if POLYGON_ROOT.exists() and str(POLYGON_ROOT) not in sys.path:
         sys.path.insert(0, str(POLYGON_ROOT))
     from polygon.utils.custom_scoring_fcn import SAScorer  # type: ignore
+    from polygon.vae.vae_trainer import VAETrainer  # type: ignore
 except Exception:
     SAScorer = None
+    VAETrainer = None
 
 
-REF_POINT = np.array([0.0, 0.0], dtype=np.float32)
+REF_POINT = RAW_REF_POINT.copy()
 DEFAULT_VAE_MODEL = PROJECT_ROOT / "models" / "polygon_vae_best_valid_novel_stable_020.pt"
+DEFAULT_PROTOCOL_CONFIG = PROJECT_ROOT / "config" / "formal_experiments.json"
+DEFAULT_CONTROLLER_VARIANT = "ours_full_corrected"
 DEFAULT_TEMPERATURE = 1.0
 DEFAULT_CHANNELS = [
     # epoch_020 was measured at validity=94.245%, novelty=96.052% at
@@ -132,7 +142,72 @@ def canonical(smiles: str) -> Tuple[Optional[str], Optional[Chem.Mol]]:
     mol = Chem.MolFromSmiles(str(smiles))
     if mol is None:
         return None, None
-    return Chem.MolToSmiles(mol, canonical=True), mol
+    fragments = Chem.GetMolFrags(mol, asMols=True, sanitizeFrags=True)
+    if not fragments:
+        return None, None
+    mol = max(fragments, key=lambda item: item.GetNumHeavyAtoms())
+    return Chem.MolToSmiles(mol, canonical=True, isomericSmiles=True), mol
+
+
+def file_sha256(path: Path) -> str:
+    digest = hashlib.sha256()
+    with path.open("rb") as handle:
+        for block in iter(lambda: handle.read(1024 * 1024), b""):
+            digest.update(block)
+    return digest.hexdigest()
+
+
+def load_protocol(path: str) -> Dict:
+    protocol_path = Path(path).resolve()
+    if not protocol_path.exists():
+        raise FileNotFoundError(f"Protocol config not found: {protocol_path}")
+    return json.loads(protocol_path.read_text(encoding="utf-8"))
+
+
+def enforce_registered_protocol(args, protocol: Dict) -> None:
+    """Reject silent drift for pre-registered screening/formal budgets."""
+    registered_budgets = set(protocol.get("oracle_budgets", []))
+    if args.oracle_budget not in registered_budgets:
+        return
+    checks = {
+        "batch": (args.batch, protocol.get("batch_size")),
+        "trajectory_step_normalization": (
+            args.trajectory_step_normalization,
+            protocol.get("trajectory_step_normalization"),
+        ),
+        "controller_variant": (
+            args.controller_variant,
+            protocol.get("controller_variant", DEFAULT_CONTROLLER_VARIANT),
+        ),
+    }
+    for name, (actual, expected) in checks.items():
+        if expected is not None and actual != expected:
+            raise ValueError(
+                f"Registered protocol mismatch for {name}: {actual!r} != {expected!r}"
+            )
+    hv_protocol = protocol.get("activity_hv", {})
+    hv_bounds = (
+        float(hv_protocol.get("lower_pactivity", ACTIVITY_LOWER)),
+        float(hv_protocol.get("upper_pactivity", ACTIVITY_UPPER)),
+    )
+    if hv_bounds != (ACTIVITY_LOWER, ACTIVITY_UPPER):
+        raise ValueError(
+            "Registered activity HV bounds do not match the implementation: "
+            f"{hv_bounds!r} != {(ACTIVITY_LOWER, ACTIVITY_UPPER)!r}"
+        )
+    if args.trajectory_length not in protocol.get("trajectory_lengths", []):
+        raise ValueError(
+            f"trajectory_length={args.trajectory_length} is not registered in the protocol"
+        )
+    registered_seeds = set(protocol.get("screening_seeds", []))
+    registered_seeds.update(protocol.get("formal_seeds", []))
+    registered_seeds.update(protocol.get("extended_seeds", []))
+    registered_seeds.update(protocol.get("prospective_seeds", []))
+    registered_seeds.update(protocol.get("v3_confirmation_seeds", []))
+    registered_seeds.update(protocol.get("v4_confirmation_seeds", []))
+    registered_seeds.update(protocol.get("v4_ablation_seeds", []))
+    if registered_seeds and args.seed not in registered_seeds:
+        raise ValueError(f"seed={args.seed} is not registered in the protocol")
 
 
 def load_train_set(path: Optional[str]) -> set:
@@ -218,6 +293,30 @@ def trajectory_step_scale(
     return float(base_step_scale * step_multiplier / divisor)
 
 
+def linear_ramp(progress: float, start: float, end: float) -> float:
+    """Return a clipped 0->1 schedule while preserving legacy instant-on defaults."""
+    progress = float(np.clip(progress, 0.0, 1.0))
+    start = float(np.clip(start, 0.0, 1.0))
+    end = float(np.clip(end, 0.0, 1.0))
+    if progress <= start:
+        return 0.0
+    if end <= start or progress >= end:
+        return 1.0
+    return (progress - start) / (end - start)
+
+
+def archive_stagnation_status(
+    hv_history: Sequence[float], window: int, minimum_gain: float
+) -> Tuple[bool, float]:
+    """Return whether archive replay should activate and the recent HV gain."""
+    if window <= 0:
+        return True, float("nan")
+    if len(hv_history) <= window:
+        return False, float("nan")
+    gain = float(hv_history[-1] - hv_history[-1 - window])
+    return gain < float(minimum_gain), gain
+
+
 def store_terminal_trajectory(
     agent,
     transitions: Sequence[Dict],
@@ -253,6 +352,138 @@ def _positive_rank_scale(values: np.ndarray) -> np.ndarray:
     if np.any(positive):
         result[positive] = pd.Series(values[positive]).rank(method="average", pct=True).to_numpy()
     return result
+
+
+def archive_sampling_probabilities(
+    scores: np.ndarray,
+    strategy: str = "uniform",
+    hvc_weight: float = 0.7,
+    balance_weight: float = 0.3,
+    temperature: float = 0.25,
+    uniform_mix: float = 0.10,
+) -> np.ndarray:
+    """Build auditable elite-parent probabilities for the Pareto archive.
+
+    HVC is computed as the exclusive loss in normalized 2-D hypervolume when
+    each archive point is removed.  The optional balance term favors molecules
+    whose weaker target is also strong.  A small uniform mixture prevents a
+    permanently zero sampling probability for valid frontier regions.
+    """
+    scores = np.asarray(scores, dtype=np.float64).reshape(-1, 2)
+    count = len(scores)
+    if count == 0:
+        return np.zeros(0, dtype=np.float64)
+    uniform = np.ones(count, dtype=np.float64) / count
+    if strategy == "uniform" or count == 1:
+        return uniform
+    if strategy not in {"hvc", "hvc_balanced"}:
+        raise ValueError(f"Unknown archive sampling strategy: {strategy}")
+
+    full_hv = hypervolume_2d(scores)
+    exclusive_hvc = np.asarray(
+        [
+            max(0.0, full_hv - hypervolume_2d(np.delete(scores, index, axis=0)))
+            for index in range(count)
+        ],
+        dtype=np.float64,
+    )
+    hvc_rank = _positive_rank_scale(exclusive_hvc)
+    normalized = np.clip(
+        (scores - ACTIVITY_LOWER) / max(ACTIVITY_UPPER - ACTIVITY_LOWER, 1e-8),
+        0.0,
+        1.0,
+    )
+    balance_rank = pd.Series(np.min(normalized, axis=1)).rank(
+        method="average", pct=True
+    ).to_numpy(dtype=np.float64)
+    if strategy == "hvc":
+        elite_score = hvc_rank
+    else:
+        elite_score = (
+            max(float(hvc_weight), 0.0) * hvc_rank
+            + max(float(balance_weight), 0.0) * balance_rank
+        )
+    if np.allclose(elite_score, elite_score[0]):
+        return uniform
+
+    temperature = max(float(temperature), 1e-6)
+    logits = (elite_score - np.max(elite_score)) / temperature
+    probabilities = np.exp(logits)
+    probabilities /= probabilities.sum()
+    mix = float(np.clip(uniform_mix, 0.0, 1.0))
+    probabilities = (1.0 - mix) * probabilities + mix * uniform
+    return probabilities / probabilities.sum()
+
+
+def generator_elite_scores(
+    scores: np.ndarray,
+    strategy: str,
+    weights: Optional[np.ndarray] = None,
+    balance_mix: float = 0.5,
+    softmin_temperature: float = 0.1,
+) -> np.ndarray:
+    """Rank real molecules for generator self-training.
+
+    The legacy strategies reproduce POLYGON's clipped reward view (3.0--6.5).
+    ``raw_*`` strategies instead use the pre-registered HV normalization range
+    (3.0--10.0), so activity improvements above 6.5 are not discarded.
+
+    ``balance_sync`` is the V5 rule.  It synchronizes the current three-stage
+    controller preference with generator self-training.  The weighted term
+    retains V4-B's registered 3.0--10.0 continuous-activity signal, while the
+    smooth worst-target term is computed from 3.0--6.5 threshold deficits.
+    Thus V5 adds balance pressure without discarding improvements above 6.5.
+    """
+    scores = np.asarray(scores, dtype=np.float64).reshape(-1, 2)
+    if strategy == "balance_sync":
+        if not 0.0 <= balance_mix <= 1.0:
+            raise ValueError("balance_mix must be in [0, 1]")
+        if softmin_temperature <= 0.0:
+            raise ValueError("softmin_temperature must be positive")
+        if weights is None:
+            normalized_weights = np.ones(2, dtype=np.float64) / 2.0
+        else:
+            normalized_weights = np.clip(
+                np.asarray(weights, dtype=np.float64).reshape(2), 0.0, None
+            )
+            if normalized_weights.sum() <= 0.0:
+                normalized_weights = np.ones(2, dtype=np.float64) / 2.0
+            else:
+                normalized_weights /= normalized_weights.sum()
+
+        raw_desirability = np.clip((scores - 3.0) / (10.0 - 3.0), 0.0, 1.0)
+        threshold_desirability = np.clip(
+            (scores - 3.0) / (6.5 - 3.0), 0.0, 1.0
+        )
+        weighted_desirability = raw_desirability @ normalized_weights
+
+        # softmin(d) == 1 - smooth_max(1 - d): explicitly penalize the
+        # largest remaining threshold deficit while retaining smooth ranks.
+        deficits = 1.0 - threshold_desirability
+        scaled = deficits / softmin_temperature
+        scaled_max = scaled.max(axis=1, keepdims=True)
+        smooth_max_deficit = softmin_temperature * (
+            scaled_max[:, 0]
+            + np.log(np.exp(scaled - scaled_max).mean(axis=1))
+        )
+        soft_min = 1.0 - smooth_max_deficit
+        return (
+            (1.0 - balance_mix) * weighted_desirability
+            + balance_mix * soft_min
+        )
+
+    upper = 10.0 if strategy.startswith("raw_") else 6.5
+    desirability = np.clip((scores - 3.0) / (upper - 3.0), 0.0, 1.0)
+    mean_score = desirability.mean(axis=1)
+    min_score = desirability.min(axis=1)
+    base_strategy = strategy.removeprefix("raw_")
+    if base_strategy == "mean":
+        return mean_score
+    if base_strategy == "min":
+        return min_score
+    if base_strategy == "mixed":
+        return 0.5 * mean_score + 0.5 * min_score
+    raise ValueError(f"Unknown generator elite strategy: {strategy}")
 
 
 def compute_pareto_shaping(
@@ -345,20 +576,41 @@ def build_epoch_channels(
 
 class MultiExploreIntegrator(MO_RL_Integrator):
     def __init__(self, config: Dict):
+        use_v41 = config.get("oracle_system", "original_rf") == "v41"
         super().__init__(
             latent_dim=config.get("latent_dim", 128),
             num_obj=2,
             total_epochs=config.get("total_epochs", 100),
             batch_size=config.get("batch_size", 64),
             vae_model_path=config.get("vae_model_path"),
-            egfr_model_path=config.get("egfr_model_path"),
-            vegfr2_model_path=config.get("vegfr2_model_path"),
+            egfr_model_path=None if use_v41 else config.get("egfr_model_path"),
+            vegfr2_model_path=None if use_v41 else config.get("vegfr2_model_path"),
             config=config,
         )
         self.objective_calculator = TwoTargetObjectiveCalculator(
             config.get("egfr_model_path"),
             config.get("vegfr2_model_path"),
         )
+        if use_v41:
+            from predictor_v41_oracle import V41TwoTargetObjectiveCalculator
+
+            # Loading ten Chemprop members constructs modules internally and
+            # may consume RNG state.  Preserve all experiment RNG streams so
+            # paired seeds differ only in the online reward predictor.
+            python_rng = random.getstate()
+            numpy_rng = np.random.get_state()
+            torch_rng = torch.random.get_rng_state()
+            cuda_rng = torch.cuda.get_rng_state_all() if torch.cuda.is_available() else None
+            try:
+                self.objective_calculator = V41TwoTargetObjectiveCalculator(
+                    PROJECT_ROOT, device=config.get("device", "cuda")
+                )
+            finally:
+                random.setstate(python_rng)
+                np.random.set_state(numpy_rng)
+                torch.random.set_rng_state(torch_rng)
+                if cuda_rng is not None:
+                    torch.cuda.set_rng_state_all(cuda_rng)
         # Two explicit context features make temperature and step multiplier
         # observable to both actor and critics.  The action still lives in the
         # original latent dimension.
@@ -382,7 +634,7 @@ class MultiExploreIntegrator(MO_RL_Integrator):
             device=config.get("device", None),
         )
         self.controller = create_controller(
-            config.get("controller_variant", "ours_full"),
+            config.get("controller_variant", DEFAULT_CONTROLLER_VARIANT),
             num_obj=2,
             total_epochs=self.total_epochs,
         )
@@ -407,6 +659,32 @@ class MultiExploreIntegrator(MO_RL_Integrator):
         )
         self.archive_seed_fraction = float(config.get("archive_seed_fraction", 0.0))
         self.archive_seed_noise = float(config.get("archive_seed_noise", 0.15))
+        self.archive_seed_noise_end = float(
+            config.get("archive_seed_noise_end", self.archive_seed_noise)
+        )
+        self.archive_seed_start = float(config.get("archive_seed_start", 0.0))
+        self.archive_seed_ramp_end = float(config.get("archive_seed_ramp_end", 0.0))
+        self.archive_seed_selection = str(
+            config.get("archive_seed_selection", "uniform")
+        )
+        self.archive_hvc_weight = float(config.get("archive_hvc_weight", 0.7))
+        self.archive_balance_weight = float(
+            config.get("archive_balance_weight", 0.3)
+        )
+        self.archive_selection_temperature = float(
+            config.get("archive_selection_temperature", 0.25)
+        )
+        self.archive_uniform_mix = float(config.get("archive_uniform_mix", 0.10))
+        self.archive_stagnation_window = int(
+            config.get("archive_stagnation_window", 0)
+        )
+        self.archive_stagnation_delta = float(
+            config.get("archive_stagnation_delta", 0.002)
+        )
+        self.archive_stagnation_noise = float(
+            config.get("archive_stagnation_noise", 0.0)
+        )
+        self.archive_hv_history = [0.0]
         self.preference_floor = float(config.get("preference_floor", 0.10))
         self.preference_ema_alpha = float(config.get("preference_ema_alpha", 0.25))
         self.policy_weights = np.ones(2, dtype=np.float32) / 2.0
@@ -423,11 +701,100 @@ class MultiExploreIntegrator(MO_RL_Integrator):
         self.balanced_reward_weight = float(config.get("balanced_reward_weight", 0.0))
         self.sample_preference_mode = str(config.get("sample_preference_mode", "shared"))
         self.sample_preference_blend = float(config.get("sample_preference_blend", 0.75))
+        self.sample_preference_start = float(config.get("sample_preference_start", 0.0))
+        self.sample_preference_ramp_end = float(
+            config.get("sample_preference_ramp_end", 0.0)
+        )
         self.pareto_reward_start = float(config.get("pareto_reward_start", 0.0))
         self.pareto_reward_ramp_end = float(config.get("pareto_reward_ramp_end", 0.0))
         self.agent.auxiliary_actor_coef = float(config.get("pareto_actor_coef", 0.0))
+        self.actor_mode = str(config.get("actor_mode", "train"))
+        if self.actor_mode not in {"train", "frozen", "zero"}:
+            raise ValueError(f"Unknown actor_mode: {self.actor_mode}")
+        self.generator_finetune_interval = int(
+            config.get("generator_finetune_interval", 0)
+        )
+        self.generator_finetune_epochs = int(
+            config.get("generator_finetune_epochs", 0)
+        )
+        self.generator_finetune_top = int(config.get("generator_finetune_top", 512))
+        self.generator_finetune_batch_size = int(
+            config.get("generator_finetune_batch_size", 32)
+        )
+        self.generator_finetune_lr = float(
+            config.get("generator_finetune_lr", 3e-4)
+        )
+        self.generator_elite_strategy = str(
+            config.get("generator_elite_strategy", "mean")
+        )
+        self.generator_balance_mix = float(
+            config.get("generator_balance_mix", 0.5)
+        )
+        self.generator_softmin_temperature = float(
+            config.get("generator_softmin_temperature", 0.1)
+        )
+        self.generator_elite_archive: Dict[str, np.ndarray] = {}
+        self.generator_finetune_count = 0
+        self.generator_trainer = None
+        if self.generator_finetune_interval > 0 and self.generator_finetune_epochs > 0:
+            if VAETrainer is None or getattr(self.vae, "_model_type", None) != "polygon":
+                raise RuntimeError("Generator self-training requires the Polygon VAE trainer")
+            self.generator_trainer = VAETrainer(
+                model=self.vae.model,
+                model_save=None,
+                n_batch=self.generator_finetune_batch_size,
+                n_workers=0,
+                kl_w_start=1,
+                kl_w_end=1,
+                lr_start=self.generator_finetune_lr,
+                lr_end=self.generator_finetune_lr,
+            )
+
+    def _update_generator_elites(self, molecules: Sequence[Molecule]) -> None:
+        for molecule in molecules:
+            self.generator_elite_archive[molecule.smiles] = np.asarray(
+                molecule.scores, dtype=np.float32
+            )
+
+    def _finetune_generator_if_due(self, epoch: int) -> bool:
+        if self.generator_trainer is None:
+            return False
+        if (epoch + 1) % self.generator_finetune_interval != 0:
+            return False
+        if len(self.generator_elite_archive) < 4:
+            return False
+        smiles = list(self.generator_elite_archive)
+        scores = np.vstack([self.generator_elite_archive[item] for item in smiles])
+        ranking = generator_elite_scores(
+            scores,
+            self.generator_elite_strategy,
+            weights=self.policy_weights,
+            balance_mix=self.generator_balance_mix,
+            softmin_temperature=self.generator_softmin_temperature,
+        )
+        order = np.argsort(-ranking, kind="stable")[: self.generator_finetune_top]
+        selected = [smiles[index] for index in order]
+        np.random.shuffle(selected)
+        split = max(1, int(0.75 * len(selected)))
+        train = selected[:split]
+        validation = selected[split:] or None
+        self.generator_trainer.fit(
+            train,
+            validation,
+            n_epoch=self.generator_finetune_epochs,
+            batch_size=min(self.generator_finetune_batch_size, len(train)),
+            save_frequency=None,
+        )
+        self.vae.model.eval()
+        self.generator_finetune_count += 1
+        return True
 
     def _normalize_weights(self, weights: np.ndarray) -> np.ndarray:
+        """Project onto the simplex with a floor, idempotently.
+
+        The earlier affine floor transform was applied multiple times per
+        epoch, which repeatedly pulled already-valid preferences toward 0.5.
+        """
         weights = np.asarray(weights, dtype=np.float32)
         weights = np.clip(weights, 0.0, None)
         if weights.sum() <= 0:
@@ -435,10 +802,19 @@ class MultiExploreIntegrator(MO_RL_Integrator):
         else:
             weights = weights / weights.sum()
         floor = min(self.preference_floor, (1.0 - 1e-6) / len(weights))
-        return floor + (1.0 - floor * len(weights)) * weights
+        if np.all(weights >= floor - 1e-7):
+            return weights
+        residual = np.clip(weights - floor, 0.0, None)
+        if residual.sum() <= 1e-12:
+            return np.ones_like(weights) / len(weights)
+        return floor + (1.0 - floor * len(weights)) * residual / residual.sum()
 
     def _build_sample_preferences(
-        self, count: int, base_weights: np.ndarray, epoch: int
+        self,
+        count: int,
+        base_weights: np.ndarray,
+        epoch: int,
+        schedule_strength: float = 1.0,
     ) -> np.ndarray:
         if self.sample_preference_mode == "shared" or count <= 1:
             return np.repeat(base_weights[None, :], count, axis=0)
@@ -449,7 +825,10 @@ class MultiExploreIntegrator(MO_RL_Integrator):
         grid = np.roll(grid, epoch % count)
         np.random.shuffle(grid)
         targets = np.column_stack([grid, 1.0 - grid]).astype(np.float32)
-        blend = float(np.clip(self.sample_preference_blend, 0.0, 1.0))
+        blend = float(
+            np.clip(self.sample_preference_blend, 0.0, 1.0)
+            * np.clip(schedule_strength, 0.0, 1.0)
+        )
         preferences = (1.0 - blend) * base_weights[None, :] + blend * targets
         return np.vstack([self._normalize_weights(pref) for pref in preferences])
 
@@ -472,29 +851,69 @@ class MultiExploreIntegrator(MO_RL_Integrator):
                 np.full(2, self.dirichlet_alpha, dtype=np.float64)
             ).astype(np.float32)
         weights = self._normalize_weights(self.policy_weights)
-        sample_preferences = self._build_sample_preferences(len(channels), weights, epoch)
         progress = (epoch + 1) / max(self.total_epochs, 1)
-        if progress <= self.pareto_reward_start:
-            pareto_reward_strength = 0.0
-        elif self.pareto_reward_ramp_end <= self.pareto_reward_start or progress >= self.pareto_reward_ramp_end:
-            pareto_reward_strength = 1.0
-        else:
-            pareto_reward_strength = (progress - self.pareto_reward_start) / (
-                self.pareto_reward_ramp_end - self.pareto_reward_start
+        pareto_reward_strength = linear_ramp(
+            progress, self.pareto_reward_start, self.pareto_reward_ramp_end
+        )
+        archive_seed_strength = linear_ramp(
+            progress, self.archive_seed_start, self.archive_seed_ramp_end
+        )
+        archive_stagnation_triggered, archive_recent_hv_gain = (
+            archive_stagnation_status(
+                self.archive_hv_history,
+                self.archive_stagnation_window,
+                self.archive_stagnation_delta,
             )
+        )
+        if not archive_stagnation_triggered:
+            archive_seed_strength = 0.0
+        preference_strength = linear_ramp(
+            progress, self.sample_preference_start, self.sample_preference_ramp_end
+        )
+        effective_archive_fraction = float(
+            np.clip(self.archive_seed_fraction, 0.0, 1.0) * archive_seed_strength
+        )
+        effective_archive_noise = float(
+            self.archive_seed_noise
+            + archive_seed_strength
+            * (self.archive_seed_noise_end - self.archive_seed_noise)
+        )
+        if archive_stagnation_triggered and self.archive_stagnation_noise > 0:
+            effective_archive_noise = max(
+                effective_archive_noise, self.archive_stagnation_noise
+            )
+        effective_preference_blend = float(
+            np.clip(self.sample_preference_blend, 0.0, 1.0) * preference_strength
+        )
+        sample_preferences = self._build_sample_preferences(
+            len(channels), weights, epoch, schedule_strength=preference_strength
+        )
         z_states = np.random.normal(0, 1, (len(channels), self.latent_dim)).astype(np.float32)
         latent_sources = np.full(len(channels), "global_prior", dtype=object)
-        if self.pareto_front.molecules and self.archive_seed_fraction > 0:
+        if self.pareto_front.molecules and effective_archive_fraction > 0:
             n_archive = min(
                 len(channels),
-                int(round(len(channels) * np.clip(self.archive_seed_fraction, 0.0, 1.0))),
+                int(round(len(channels) * effective_archive_fraction)),
             )
             archive_latents = np.asarray(
                 [m.latent_vector for m in self.pareto_front.molecules], dtype=np.float32
             )
-            chosen = np.random.randint(0, len(archive_latents), size=n_archive)
+            archive_scores = np.asarray(
+                [m.scores for m in self.pareto_front.molecules], dtype=np.float64
+            )
+            parent_probabilities = archive_sampling_probabilities(
+                archive_scores,
+                strategy=self.archive_seed_selection,
+                hvc_weight=self.archive_hvc_weight,
+                balance_weight=self.archive_balance_weight,
+                temperature=self.archive_selection_temperature,
+                uniform_mix=self.archive_uniform_mix,
+            )
+            chosen = np.random.choice(
+                len(archive_latents), size=n_archive, replace=True, p=parent_probabilities
+            )
             z_states[:n_archive] = archive_latents[chosen] + np.random.normal(
-                0.0, self.archive_seed_noise, size=(n_archive, self.latent_dim)
+                0.0, effective_archive_noise, size=(n_archive, self.latent_dim)
             ).astype(np.float32)
             z_states[:n_archive] = np.clip(z_states[:n_archive], -self.latent_clip, self.latent_clip)
             latent_sources[:n_archive] = "pareto_archive"
@@ -512,6 +931,7 @@ class MultiExploreIntegrator(MO_RL_Integrator):
                 "temperature": temperature,
                 "step_multiplier": step_multiplier,
                 "trajectory_length": self.trajectory_length,
+                "actor_mode": self.actor_mode,
                 "trajectory_steps": 0,
                 "effective_step_scale": trajectory_step_scale(
                     self.base_step_scale,
@@ -540,6 +960,11 @@ class MultiExploreIntegrator(MO_RL_Integrator):
                 "balanced_rank_reward": 0.0,
                 "auxiliary_reward": 0.0,
                 "pareto_reward_strength": float(pareto_reward_strength),
+                "archive_seed_fraction_effective": effective_archive_fraction,
+                "archive_seed_noise_effective": effective_archive_noise,
+                "archive_stagnation_triggered": archive_stagnation_triggered,
+                "archive_recent_hv_gain": archive_recent_hv_gain,
+                "preference_blend_effective": effective_preference_blend,
                 "pref_egfr": float(sample_preferences[idx, 0]),
                 "pref_vegfr2": float(sample_preferences[idx, 1]),
                 "error": "",
@@ -555,9 +980,15 @@ class MultiExploreIntegrator(MO_RL_Integrator):
                 path_length = 0.0
                 for trajectory_step in range(self.trajectory_length):
                     policy_state = np.concatenate([current_z, channel_context])
-                    action, log_prob, values, entropy = self.agent.select_action(
-                        policy_state, preference=sample_preference
-                    )
+                    if self.actor_mode == "zero":
+                        action = np.zeros(self.latent_dim, dtype=np.float32)
+                        log_prob = 0.0
+                        values = np.zeros(2, dtype=np.float32)
+                        entropy = 0.0
+                    else:
+                        action, log_prob, values, entropy = self.agent.select_action(
+                            policy_state, preference=sample_preference
+                        )
                     new_z = np.clip(
                         current_z
                         + step_scale * np.asarray(action, dtype=np.float32),
@@ -616,13 +1047,14 @@ class MultiExploreIntegrator(MO_RL_Integrator):
                     invalid_count += 1
                     if not row["error"]:
                         row["error"] = "invalid_smiles"
-                    store_terminal_trajectory(
-                        self.agent,
-                        item["transitions"],
-                        np.full(2, self.invalid_reward, dtype=np.float32),
-                        item["preference"],
-                        auxiliary_reward=0.0,
-                    )
+                    if self.actor_mode == "train":
+                        store_terminal_trajectory(
+                            self.agent,
+                            item["transitions"],
+                            np.full(2, self.invalid_reward, dtype=np.float32),
+                            item["preference"],
+                            auxiliary_reward=0.0,
+                        )
                 else:
                     pending_valid.append(
                         {
@@ -646,12 +1078,13 @@ class MultiExploreIntegrator(MO_RL_Integrator):
                 if np.any(np.isnan(scores)) or np.any(np.isinf(scores)):
                     invalid_count += 1
                     row["error"] = "invalid_scores"
-                    store_terminal_trajectory(
-                        self.agent,
-                        item["transitions"],
-                        np.full(2, self.invalid_reward, dtype=np.float32),
-                        item["preference"],
-                    )
+                    if self.actor_mode == "train":
+                        store_terminal_trajectory(
+                            self.agent,
+                            item["transitions"],
+                            np.full(2, self.invalid_reward, dtype=np.float32),
+                            item["preference"],
+                        )
                     continue
                 can = item["canonical"]
                 mol = item["mol"]
@@ -698,13 +1131,14 @@ class MultiExploreIntegrator(MO_RL_Integrator):
                             "auxiliary_reward": float(auxiliary_reward),
                         }
                     )
-                    store_terminal_trajectory(
-                        self.agent,
-                        item["transitions"],
-                        item["scores"],
-                        item["preference"],
-                        auxiliary_reward=auxiliary_reward,
-                    )
+                    if self.actor_mode == "train":
+                        store_terminal_trajectory(
+                            self.agent,
+                            item["transitions"],
+                            item["scores"],
+                            item["preference"],
+                            auxiliary_reward=auxiliary_reward,
+                        )
 
         if valid_molecules:
             # Deduplicate the batch by canonical SMILES before archive update.
@@ -730,9 +1164,15 @@ class MultiExploreIntegrator(MO_RL_Integrator):
                 (1.0 - alpha) * weights + alpha * raw_next_weights
             )
         else:
+            raw_next_weights = np.ones(2, dtype=np.float32) / 2.0
             self.policy_weights = np.ones(2, dtype=np.float32) / 2.0
         if archive_batch:
             self.controller.update_pareto_front(archive_batch)
+        self.archive_hv_history.append(
+            hypervolume_2d(np.asarray(self.pareto_front.solutions, dtype=np.float64))
+            if len(self.pareto_front.solutions)
+            else 0.0
+        )
 
         # EMA channel utility couples exploration allocation to Pareto coverage.
         # HVC is primary; validity is a small stabilizer when HVC is sparse.
@@ -750,9 +1190,11 @@ class MultiExploreIntegrator(MO_RL_Integrator):
             self.channel_utility = 0.8 * self.channel_utility + 0.2 * observed
 
         loss = 0.0
-        if len(self.agent.buffer.states) >= self.agent.mini_batch_size:
+        if self.actor_mode == "train" and len(self.agent.buffer.states) >= self.agent.mini_batch_size:
             loss = self.agent.update(self.agent.buffer)
             self.agent.buffer.clear()
+        self._update_generator_elites(valid_molecules)
+        generator_finetuned = self._finetune_generator_if_due(epoch)
 
         info = {
             "valid_count": len(valid_molecules),
@@ -765,6 +1207,17 @@ class MultiExploreIntegrator(MO_RL_Integrator):
             "policy_w_vegfr2": float(weights[1]),
             "next_w_egfr": float(self.policy_weights[0]),
             "next_w_vegfr2": float(self.policy_weights[1]),
+            "controller_raw_w_egfr": float(raw_next_weights[0]),
+            "controller_raw_w_vegfr2": float(raw_next_weights[1]),
+            "pareto_reward_strength": float(pareto_reward_strength),
+            "archive_seed_fraction_effective": effective_archive_fraction,
+            "archive_seed_noise_effective": effective_archive_noise,
+            "archive_stagnation_triggered": archive_stagnation_triggered,
+            "archive_recent_hv_gain": archive_recent_hv_gain,
+            "preference_blend_effective": effective_preference_blend,
+            "generator_finetuned": generator_finetuned,
+            "generator_finetune_count": self.generator_finetune_count,
+            "generator_elite_archive_size": len(self.generator_elite_archive),
             "stage": stage_name(epoch, self.total_epochs),
         }
         return valid_molecules, float(loss), info, generated_rows
@@ -813,7 +1266,7 @@ def plot_outputs(out_dir: Path) -> None:
     plt.figure(figsize=(8, 4.8))
     plt.plot(hv["epoch"], hv["hv"], linewidth=2)
     plt.xlabel("Epoch")
-    plt.ylabel("Hypervolume (ref=0,0)")
+    plt.ylabel(f"Normalized hypervolume ({ACTIVITY_LOWER:g}-{ACTIVITY_UPPER:g}, ref=0,0)")
     plt.title("Multi-explore HV trajectory")
     plt.grid(alpha=0.25)
     plt.tight_layout()
@@ -868,6 +1321,8 @@ def plot_outputs(out_dir: Path) -> None:
 
 def run(args) -> RunResult:
     start = time.time()
+    if args.archive_seed_noise_end is None:
+        args.archive_seed_noise_end = args.archive_seed_noise
     out_dir = Path(args.output).resolve()
     out_dir.mkdir(parents=True, exist_ok=True)
     train_set = load_train_set(args.train_cache)
@@ -881,6 +1336,9 @@ def run(args) -> RunResult:
                 f"--oracle-budget ({args.oracle_budget}) must be divisible by --batch ({args.batch})"
             )
         args.epochs = args.oracle_budget // args.batch
+
+    protocol = load_protocol(args.protocol_config)
+    enforce_registered_protocol(args, protocol)
 
     config = {
         "vae_model_path": str(Path(args.model).resolve()),
@@ -899,6 +1357,17 @@ def run(args) -> RunResult:
         "trajectory_step_normalization": args.trajectory_step_normalization,
         "archive_seed_fraction": args.archive_seed_fraction,
         "archive_seed_noise": args.archive_seed_noise,
+        "archive_seed_noise_end": args.archive_seed_noise_end,
+        "archive_seed_start": args.archive_seed_start,
+        "archive_seed_ramp_end": args.archive_seed_ramp_end,
+        "archive_seed_selection": args.archive_seed_selection,
+        "archive_hvc_weight": args.archive_hvc_weight,
+        "archive_balance_weight": args.archive_balance_weight,
+        "archive_selection_temperature": args.archive_selection_temperature,
+        "archive_uniform_mix": args.archive_uniform_mix,
+        "archive_stagnation_window": args.archive_stagnation_window,
+        "archive_stagnation_delta": args.archive_stagnation_delta,
+        "archive_stagnation_noise": args.archive_stagnation_noise,
         "latent_clip": args.latent_clip,
         "invalid_reward": args.invalid_reward,
         "preference_floor": args.preference_floor,
@@ -914,12 +1383,79 @@ def run(args) -> RunResult:
         "crowding_reward_weight": args.crowding_reward_weight,
         "balanced_reward_weight": args.balanced_reward_weight,
         "pareto_actor_coef": args.pareto_actor_coef,
+        "actor_mode": args.actor_mode,
+        "generator_finetune_interval": args.generator_finetune_interval,
+        "generator_finetune_epochs": args.generator_finetune_epochs,
+        "generator_finetune_top": args.generator_finetune_top,
+        "generator_finetune_batch_size": args.generator_finetune_batch_size,
+        "generator_finetune_lr": args.generator_finetune_lr,
+        "generator_elite_strategy": args.generator_elite_strategy,
+        "generator_balance_mix": args.generator_balance_mix,
+        "generator_softmin_temperature": args.generator_softmin_temperature,
+        "advantage_normalization": "per_objective_then_scalarized",
         "sample_preference_mode": args.sample_preference_mode,
         "sample_preference_blend": args.sample_preference_blend,
+        "sample_preference_start": args.sample_preference_start,
+        "sample_preference_ramp_end": args.sample_preference_ramp_end,
         "pareto_reward_start": args.pareto_reward_start,
         "pareto_reward_ramp_end": args.pareto_reward_ramp_end,
         "oracle_budget": args.epochs * args.batch,
+        "oracle_system": args.oracle_system,
     }
+    asset_paths = {
+        "protocol_config": Path(args.protocol_config).resolve(),
+        "train_smiles": PROJECT_ROOT / "data" / "train_smiles_only.txt",
+        "method_runner": Path(__file__).resolve(),
+        "weight_controller": PROJECT_ROOT / "method" / "ablation" / "weight_controllers.py",
+        "trajectory_agent": PROJECT_ROOT / "method" / "ablation" / "run_wc_ablation_two_targets.py",
+        "multi_critic_agent": PROJECT_ROOT / "method" / "ablation" / "multi_critic_ppo_agent.py",
+        "vae_model": Path(config["vae_model_path"]),
+        "train_cache": Path(args.train_cache).resolve(),
+    }
+    if args.oracle_system == "original_rf":
+        asset_paths.update({
+            "egfr_oracle": Path(config["egfr_model_path"]),
+            "vegfr2_oracle": Path(config["vegfr2_model_path"]),
+        })
+        oracle_contract = "raw RF predictions; no molecular-quality penalty"
+    else:
+        v41_root = PROJECT_ROOT / "results" / "predictor_v41_20260802"
+        asset_paths.update({
+            "v41_egfr_reference": PROJECT_ROOT / "results" / "predictor_retraining_v3_20260731" / "data" / "egfr" / "single_protein_assay_ge10" / "development_through_2023.csv",
+            "v41_vegfr2_model": v41_root / "deployment" / "vegfr2_extratrees.pkl",
+            "v41_vegfr2_metadata": v41_root / "deployment" / "metadata.json",
+        })
+        for variant in ("dmpnn", "dmpnn_morgan"):
+            for index, path in enumerate(sorted((v41_root / "egfr_bindingdb_external_v2" / variant).rglob("best.pt"))):
+                asset_paths[f"v41_egfr_{variant}_{index}"] = path
+        oracle_contract = (
+            "V4.1 EGFR 0.7*D-MPNN + 0.1*Morgan-DMPNN + 0.2*KNN and "
+            "VEGFR2 ExtraTrees probabilities; reward=3+7*p; no quality penalty"
+        )
+    resolved = {
+        "protocol": protocol,
+        "arguments": vars(args),
+        "runtime_config": config,
+        "activity_hv": {
+            "type": "linear_clipped",
+            "lower_pactivity": ACTIVITY_LOWER,
+            "upper_pactivity": ACTIVITY_UPPER,
+            "reference": [0.0, 0.0],
+        },
+        "oracle_contract": oracle_contract,
+        "canonicalization": "largest-fragment canonical isomeric SMILES",
+        "assets": {
+            name: {
+                "path": str(path),
+                "sha256": file_sha256(path),
+            }
+            for name, path in asset_paths.items()
+        },
+    }
+    (out_dir / "resolved_config.json").write_text(
+        json.dumps(resolved, indent=2, ensure_ascii=False, default=str),
+        encoding="utf-8",
+    )
     integrator = MultiExploreIntegrator(config)
 
     all_rows: List[Dict] = []
@@ -928,17 +1464,21 @@ def run(args) -> RunResult:
     channel_rows: List[Dict] = []
     fields = [
         "epoch", "sample_idx", "latent_source", "channel", "temperature", "step_multiplier",
-        "trajectory_length", "trajectory_steps", "effective_step_scale", "path_length",
+        "trajectory_length", "actor_mode", "trajectory_steps", "effective_step_scale", "path_length",
         "net_displacement", "smiles", "canonical_smiles", "is_valid",
         "is_pareto_current", "egfr", "vegfr2", "balanced", "min_score",
         "qed", "sa", "mol_wt", "logp", "tpsa", "heavy_atoms",
         "hv_contribution", "hvc_rank_reward", "crowding_reward", "balanced_rank_reward", "auxiliary_reward",
-        "pareto_reward_strength", "pref_egfr", "pref_vegfr2", "error",
+        "pareto_reward_strength", "archive_seed_fraction_effective",
+        "archive_seed_noise_effective", "archive_stagnation_triggered",
+        "archive_recent_hv_gain", "preference_blend_effective",
+        "pref_egfr", "pref_vegfr2", "error",
     ]
 
     print("Two-target multi-scale trajectory PPO")
     print(f"Output: {out_dir}")
     print(f"Model: {config['vae_model_path']}")
+    print(f"Oracle system: {args.oracle_system}")
     print(
         f"Batch={args.batch}, epochs={args.epochs}, oracle_budget={args.epochs * args.batch}, "
         f"mini_batch={args.mini_batch_size}, trajectory_K={args.trajectory_length}, "
@@ -979,6 +1519,17 @@ def run(args) -> RunResult:
                 "w_vegfr2": info["policy_w_vegfr2"],
                 "next_w_egfr": info["next_w_egfr"],
                 "next_w_vegfr2": info["next_w_vegfr2"],
+                "controller_raw_w_egfr": info["controller_raw_w_egfr"],
+                "controller_raw_w_vegfr2": info["controller_raw_w_vegfr2"],
+                "pareto_reward_strength": info["pareto_reward_strength"],
+                "archive_seed_fraction_effective": info["archive_seed_fraction_effective"],
+                "archive_seed_noise_effective": info["archive_seed_noise_effective"],
+                "archive_stagnation_triggered": info["archive_stagnation_triggered"],
+                "archive_recent_hv_gain": info["archive_recent_hv_gain"],
+                "preference_blend_effective": info["preference_blend_effective"],
+                "generator_finetuned": info["generator_finetuned"],
+                "generator_finetune_count": info["generator_finetune_count"],
+                "generator_elite_archive_size": info["generator_elite_archive_size"],
             }
         )
 
@@ -1017,7 +1568,7 @@ def run(args) -> RunResult:
             write_csv(
                 out_dir / "metrics.partial.csv",
                 metric_rows,
-                ["epoch", "stage", "loss", "valid_count", "invalid_count", "policy_transitions", "trajectory_length", "valid_rate", "hv", "pareto_size", "w_egfr", "w_vegfr2", "next_w_egfr", "next_w_vegfr2"],
+                ["epoch", "stage", "loss", "valid_count", "invalid_count", "policy_transitions", "trajectory_length", "valid_rate", "hv", "pareto_size", "w_egfr", "w_vegfr2", "next_w_egfr", "next_w_vegfr2", "controller_raw_w_egfr", "controller_raw_w_vegfr2", "pareto_reward_strength", "archive_seed_fraction_effective", "archive_seed_noise_effective", "archive_stagnation_triggered", "archive_recent_hv_gain", "preference_blend_effective", "generator_finetuned", "generator_finetune_count", "generator_elite_archive_size"],
             )
             write_csv(
                 out_dir / "channel_metrics.partial.csv",
@@ -1041,7 +1592,7 @@ def run(args) -> RunResult:
 
     write_csv(out_dir / "all_generated_molecules.csv", all_rows, fields)
     write_csv(out_dir / "hv_history.csv", hv_rows, ["epoch", "hv", "pareto_size"])
-    write_csv(out_dir / "metrics.csv", metric_rows, ["epoch", "stage", "loss", "valid_count", "invalid_count", "policy_transitions", "trajectory_length", "valid_rate", "hv", "pareto_size", "w_egfr", "w_vegfr2", "next_w_egfr", "next_w_vegfr2"])
+    write_csv(out_dir / "metrics.csv", metric_rows, ["epoch", "stage", "loss", "valid_count", "invalid_count", "policy_transitions", "trajectory_length", "valid_rate", "hv", "pareto_size", "w_egfr", "w_vegfr2", "next_w_egfr", "next_w_vegfr2", "controller_raw_w_egfr", "controller_raw_w_vegfr2", "pareto_reward_strength", "archive_seed_fraction_effective", "archive_seed_noise_effective", "archive_stagnation_triggered", "archive_recent_hv_gain", "preference_blend_effective", "generator_finetuned", "generator_finetune_count", "generator_elite_archive_size"])
     write_csv(out_dir / "channel_metrics.csv", channel_rows, ["epoch", "stage", "channel", "samples", "valid_count", "valid_rate", "pareto_hits", "egfr_mean", "vegfr2_mean", "balanced_max", "hvc_sum"])
     write_csv(out_dir / "pareto_front.csv", pareto_rows, ["smiles", "egfr", "vegfr2", "balanced", "min_score"])
     write_csv(out_dir / "top_molecules.csv", top_rows, fields)
@@ -1075,19 +1626,56 @@ def run(args) -> RunResult:
     )
     summary = result.__dict__
     summary["oracle_budget"] = args.epochs * args.batch
+    summary["oracle_system"] = args.oracle_system
     summary["trajectory_length"] = args.trajectory_length
     summary["trajectory_step_normalization"] = args.trajectory_step_normalization
     summary["policy_transition_budget"] = args.epochs * args.batch * args.trajectory_length
     summary["controller_variant"] = args.controller_variant
+    summary["actor_mode"] = args.actor_mode
+    summary["generator_finetune_interval"] = args.generator_finetune_interval
+    summary["generator_finetune_epochs"] = args.generator_finetune_epochs
+    summary["generator_finetune_top"] = args.generator_finetune_top
+    summary["generator_finetune_batch_size"] = args.generator_finetune_batch_size
+    summary["generator_finetune_lr"] = args.generator_finetune_lr
+    summary["generator_elite_strategy"] = args.generator_elite_strategy
+    summary["generator_balance_mix"] = args.generator_balance_mix
+    summary["generator_softmin_temperature"] = args.generator_softmin_temperature
+    summary["advantage_normalization"] = "per_objective_then_scalarized"
+    summary["generator_finetune_count"] = integrator.generator_finetune_count
+    summary["hv_definition"] = (
+        "v41_probability_hv_via_reward_3_plus_7p"
+        if args.oracle_system == "v41"
+        else f"linear_clipped_pactivity_{ACTIVITY_LOWER:g}_{ACTIVITY_UPPER:g}"
+    )
     summary["hvc_reward_weight"] = args.hvc_reward_weight
     summary["crowding_reward_weight"] = args.crowding_reward_weight
     summary["balanced_reward_weight"] = args.balanced_reward_weight
     summary["pareto_actor_coef"] = args.pareto_actor_coef
     summary["sample_preference_mode"] = args.sample_preference_mode
     summary["sample_preference_blend"] = args.sample_preference_blend
+    summary["sample_preference_start"] = args.sample_preference_start
+    summary["sample_preference_ramp_end"] = args.sample_preference_ramp_end
+    summary["archive_seed_fraction"] = args.archive_seed_fraction
+    summary["archive_seed_noise"] = args.archive_seed_noise
+    summary["archive_seed_noise_end"] = args.archive_seed_noise_end
+    summary["archive_seed_start"] = args.archive_seed_start
+    summary["archive_seed_ramp_end"] = args.archive_seed_ramp_end
+    summary["archive_seed_selection"] = args.archive_seed_selection
+    summary["archive_hvc_weight"] = args.archive_hvc_weight
+    summary["archive_balance_weight"] = args.archive_balance_weight
+    summary["archive_selection_temperature"] = args.archive_selection_temperature
+    summary["archive_uniform_mix"] = args.archive_uniform_mix
+    summary["archive_stagnation_window"] = args.archive_stagnation_window
+    summary["archive_stagnation_delta"] = args.archive_stagnation_delta
+    summary["archive_stagnation_noise"] = args.archive_stagnation_noise
     summary["pareto_reward_start"] = args.pareto_reward_start
     summary["pareto_reward_ramp_end"] = args.pareto_reward_ramp_end
     pd.DataFrame([summary]).to_csv(out_dir / "summary.csv", index=False, encoding="utf-8-sig")
+    if integrator.generator_finetune_count > 0:
+        torch.save(
+            integrator.vae.model.state_dict(),
+            out_dir / "generator_finetuned.pt",
+        )
 
     lines = [
         "# Two-target multi-scale trajectory PPO summary",
@@ -1104,6 +1692,7 @@ def run(args) -> RunResult:
         f"| novelty | {result.novelty * 100:.3f}% |",
         f"| novel unique molecules | {result.novel_unique_molecules} |",
         f"| final HV | {result.hv_final:.4f} |",
+        f"| HV normalization | pActivity {ACTIVITY_LOWER:g}-{ACTIVITY_UPPER:g} to [0,1] |",
         f"| Pareto size | {result.pareto_size} |",
         f"| EGFR max | {result.egfr_max:.4f} |",
         f"| VEGFR2 max | {result.vegfr2_max:.4f} |",
@@ -1118,6 +1707,7 @@ def run(args) -> RunResult:
         "",
         "- all_generated_molecules.csv",
         "- summary.csv",
+        "- resolved_config.json",
         "- hv_history.csv",
         "- metrics.csv",
         "- channel_metrics.csv",
@@ -1168,6 +1758,26 @@ def parse_args():
     )
     parser.add_argument("--archive-seed-fraction", type=float, default=0.0)
     parser.add_argument("--archive-seed-noise", type=float, default=0.15)
+    parser.add_argument(
+        "--archive-seed-noise-end",
+        type=float,
+        default=None,
+        help="Final archive perturbation scale; defaults to --archive-seed-noise.",
+    )
+    parser.add_argument("--archive-seed-start", type=float, default=0.0)
+    parser.add_argument("--archive-seed-ramp-end", type=float, default=0.0)
+    parser.add_argument(
+        "--archive-seed-selection",
+        choices=["uniform", "hvc", "hvc_balanced"],
+        default="uniform",
+    )
+    parser.add_argument("--archive-hvc-weight", type=float, default=0.7)
+    parser.add_argument("--archive-balance-weight", type=float, default=0.3)
+    parser.add_argument("--archive-selection-temperature", type=float, default=0.25)
+    parser.add_argument("--archive-uniform-mix", type=float, default=0.10)
+    parser.add_argument("--archive-stagnation-window", type=int, default=0)
+    parser.add_argument("--archive-stagnation-delta", type=float, default=0.002)
+    parser.add_argument("--archive-stagnation-noise", type=float, default=0.0)
     parser.add_argument("--latent-clip", type=float, default=4.0)
     parser.add_argument("--invalid-reward", type=float, default=-1.0)
     parser.add_argument("--preference-floor", type=float, default=0.10)
@@ -1177,9 +1787,40 @@ def parse_args():
     parser.add_argument("--balanced-reward-weight", type=float, default=0.0)
     parser.add_argument("--pareto-actor-coef", type=float, default=0.0)
     parser.add_argument(
+        "--actor-mode", choices=["train", "frozen", "zero"], default="train",
+        help="Train PPO normally, hold its initialized actor fixed, or apply zero latent displacement.",
+    )
+    parser.add_argument("--generator-finetune-interval", type=int, default=0)
+    parser.add_argument("--generator-finetune-epochs", type=int, default=0)
+    parser.add_argument("--generator-finetune-top", type=int, default=512)
+    parser.add_argument("--generator-finetune-batch-size", type=int, default=32)
+    parser.add_argument("--generator-finetune-lr", type=float, default=3e-4)
+    parser.add_argument(
+        "--generator-elite-strategy",
+        choices=[
+            "mean", "min", "mixed", "raw_mean", "raw_min", "raw_mixed",
+            "balance_sync",
+        ],
+        default="mean",
+    )
+    parser.add_argument(
+        "--generator-balance-mix",
+        type=float,
+        default=0.5,
+        help="V5 mixture weight on soft worst-target desirability.",
+    )
+    parser.add_argument(
+        "--generator-softmin-temperature",
+        type=float,
+        default=0.1,
+        help="V5 smooth maximum temperature for threshold deficits.",
+    )
+    parser.add_argument(
         "--sample-preference-mode", choices=["shared", "grid"], default="shared"
     )
     parser.add_argument("--sample-preference-blend", type=float, default=0.75)
+    parser.add_argument("--sample-preference-start", type=float, default=0.0)
+    parser.add_argument("--sample-preference-ramp-end", type=float, default=0.0)
     parser.add_argument("--pareto-reward-start", type=float, default=0.0)
     parser.add_argument("--pareto-reward-ramp-end", type=float, default=0.0)
     parser.add_argument("--weight-mode", choices=["dynamic", "fixed", "dirichlet"], default="dynamic")
@@ -1188,8 +1829,9 @@ def parse_args():
     parser.add_argument(
         "--controller-variant",
         choices=["ours_full", "ours_full_corrected"],
-        default="ours_full",
+        default=DEFAULT_CONTROLLER_VARIANT,
     )
+    parser.add_argument("--protocol-config", default=str(DEFAULT_PROTOCOL_CONFIG))
     parser.add_argument("--channel-mode", choices=["adaptive", "fixed"], default="adaptive")
     parser.add_argument(
         "--exploration-mode",
@@ -1199,6 +1841,12 @@ def parse_args():
     )
     parser.add_argument("--egfr-model", default=None)
     parser.add_argument("--vegfr2-model", default=None)
+    parser.add_argument(
+        "--oracle-system",
+        choices=["original_rf", "v41"],
+        default="original_rf",
+        help="Target predictor pair used online as the generation reward.",
+    )
     parser.add_argument("--train-cache", default=str(PROJECT_ROOT / "data" / "train_canonical_cache.txt"))
     parser.add_argument("--fscores", default=str(PROJECT_ROOT / "vendor" / "polygon-main" / "data" / "fpscores.pkl.gz"))
     parser.add_argument("--log-interval", type=int, default=10)

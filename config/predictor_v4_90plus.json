@@ -1,0 +1,51 @@
+{
+  "run_id": "predictor_v4_90plus_20260731",
+  "source_run": "results/predictor_retraining_v3_20260731",
+  "random_seed": 42,
+  "targets": ["EGFR", "VEGFR2"],
+  "profiles": [
+    "single_protein_assay_ge10",
+    "single_protein_assay_ge5",
+    "single_protein_wt_or_unspecified"
+  ],
+  "tasks": {
+    "full_threshold": {
+      "inactive_max": 6.499999,
+      "active_min": 6.5,
+      "purpose": "primary publication endpoint"
+    },
+    "confidence_margin_0_5": {
+      "inactive_max": 6.0,
+      "active_min": 7.0,
+      "purpose": "high-confidence screening endpoint; gray zone is rejected"
+    },
+    "confidence_margin_0_75": {
+      "inactive_max": 5.75,
+      "active_min": 7.25,
+      "purpose": "secondary stricter rejection endpoint"
+    },
+    "confidence_margin_1_0": {
+      "inactive_max": 5.5,
+      "active_min": 7.5,
+      "purpose": "maximum-confidence endpoint; coverage must be reported"
+    }
+  },
+  "rolling_folds": [
+    {"name": "fold_a", "train_end": 2019, "validation_years": [2020, 2021]},
+    {"name": "fold_b", "train_end": 2021, "validation_years": [2022, 2023]}
+  ],
+  "primary_acceptance": {
+    "minimum_mean_auroc": 0.9,
+    "minimum_worst_fold_auroc": 0.85,
+    "minimum_mean_auprc": 0.85,
+    "minimum_balanced_accuracy": 0.8,
+    "maximum_brier": 0.15,
+    "minimum_validation_class_count": 30
+  },
+  "regression_guardrail": {
+    "minimum_mean_spearman": 0.7,
+    "maximum_mean_rmse": 0.7
+  },
+  "selection_rule": "rank by worst-fold AUROC, then mean AUROC, then Brier; never select on random split",
+  "latest_years_are_not_for_hyperparameter_selection": true
+}

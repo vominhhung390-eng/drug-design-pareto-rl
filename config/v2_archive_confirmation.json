@@ -1,0 +1,28 @@
+{
+  "experiment_id": "own_method_v2_archive_confirmation_10240",
+  "status": "held-out confirmation",
+  "selected_from": "config/v2_late_pareto_screening.json",
+  "selection_rule": "Only v2_a_archive passed all four preregistered development gates.",
+  "oracle_budget": 10240,
+  "batch_size": 64,
+  "seeds": [52, 53, 54, 55, 56, 57, 58, 59, 60, 61],
+  "method": {
+    "controller_variant": "ours_full_corrected",
+    "trajectory_length": 1,
+    "archive_seed_fraction": 0.50,
+    "archive_seed_noise": 0.12,
+    "archive_seed_noise_end": 0.05,
+    "archive_seed_start": 0.30,
+    "archive_seed_ramp_end": 0.70,
+    "hvc_reward_weight": 0.0,
+    "crowding_reward_weight": 0.0,
+    "balanced_reward_weight": 0.0,
+    "pareto_actor_coef": 0.0,
+    "sample_preference_mode": "shared",
+    "sample_preference_blend": 0.0,
+    "sample_preference_start": 0.30,
+    "sample_preference_ramp_end": 0.70,
+    "pareto_reward_start": 0.30,
+    "pareto_reward_ramp_end": 0.70
+  }
+}
